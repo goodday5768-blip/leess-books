@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>교사용 교재</title>
+<style>
+:root{--bg:#ecebe6;--card:#fff;--ink:#1c1d21;--sub:#686a72;--line:#dcdad3;--acc:#c2410c;--acc2:#fdeee6;--bar:rgba(255,255,255,.94)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--card:#1f1f23;--ink:#ececef;--sub:#9a9aa2;--line:#33333a;--acc:#fb923c;--acc2:#3a2618;--bar:rgba(31,31,35,.94)}}
+:root[data-theme="dark"]{--bg:#121214;--card:#1f1f23;--ink:#ececef;--sub:#9a9aa2;--line:#33333a;--acc:#fb923c;--acc2:#3a2618;--bar:rgba(31,31,35,.94)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+button,input{font:inherit}
+button{border:0;border-radius:9px;padding:8px 12px;background:var(--acc2);color:var(--acc);font-weight:700;cursor:pointer}
+button:disabled{opacity:.4}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--bar);border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+.top h1{flex:1;min-width:0;margin:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .sub{display:block;font-size:12px;font-weight:400;color:var(--sub);overflow:hidden;text-overflow:ellipsis}
+.stage{max-width:920px;margin:0 auto;padding:10px 8px 92px;position:relative}
+.page{position:relative;background:#fff;border-radius:4px;box-shadow:0 1px 8px rgba(0,0,0,.12);overflow:hidden;touch-action:pan-y pinch-zoom}
+.page img{display:block;width:100%;height:auto;-webkit-user-select:none;user-select:none}
+.page .ph{position:absolute;inset:0;display:grid;place-items:center;color:#888;font-size:14px}
+.page .ph[hidden]{display:none}
+.bot{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));background:var(--bar);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
+.bot input[type=range]{flex:1;min-width:0;accent-color:var(--acc)}
+.bot .pn{display:flex;align-items:center;gap:4px;font-size:14px;color:var(--sub);white-space:nowrap}
+.bot .pn input{width:58px;padding:5px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);text-align:center}
+.panel{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column}
+.panel[hidden]{display:none}
+.panel .ph2{display:flex;gap:8px;align-items:center;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--card)}
+.panel .ph2 input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.panel .hint{padding:6px 14px;font-size:13px;color:var(--sub)}
+.panel ul{list-style:none;margin:0;padding:0 0 40px;overflow:auto;flex:1;-webkit-overflow-scrolling:touch}
+.panel li a{display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+.panel li a .t{flex:1;min-width:0}
+.panel li a .p{flex:none;color:var(--sub);font-size:13px}
+.panel li.l1 a{font-weight:700;background:var(--card)}
+.panel li.l2 a{padding-left:24px}
+.panel li.cur a{background:var(--acc2)}
+.panel li .sn{display:block;font-size:13px;color:var(--sub);margin-top:2px}
+.panel mark{background:#fde68a;color:#111;border-radius:2px}
+.gate{max-width:420px;margin:12vh auto 0;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.gate h2{margin:0 0 6px;font-size:18px}
+.gate p{margin:0 0 12px;color:var(--sub);font-size:14px}
+.gate .row{display:flex;gap:8px}
+.gate input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.gate .msg{margin-top:8px;min-height:1em;font-size:14px;color:var(--acc)}
+.shelf{max-width:780px;margin:0 auto;padding:16px}
+.shelf a{display:flex;gap:12px;align-items:center;margin:0 0 10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);text-decoration:none}
+.shelf .ic{font-size:26px}
+.shelf .nm{font-weight:700}
+.shelf .ds{display:block;font-size:13px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* 교사용 교재 뷰어 — 책 파일은 선생님 코드로 암호화(AES-GCM, books.py). 코드는 선생님 앱과 같은 자리 leess:tcode 에서 읽는다. */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
+  var BOOKS = [{"id": "peu4", "short": "PEU 4판", "title": "Practical English Usage 4판", "desc": "Michael Swan · 2016 · 28개 장 · 756쪽"}, {"id": "peu3", "short": "PEU 3판", "title": "Practical English Usage 3판", "desc": "Michael Swan · 2005 · 가나다순 절 · 689쪽 — Grammar Scan 답지가 가리키는 판"}, {"id": "gscan", "short": "Grammar Scan", "title": "Grammar Scan (문제)", "desc": "PEU 3판 진단 테스트 88개 · Upper Intermediate·Advanced·Expert · 198쪽"}, {"id": "gskey", "short": "Grammar Scan 답지", "title": "Grammar Scan (답지)", "desc": "Answer Key · 49쪽"}];
+  var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
+  var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+            set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
+  var app = $('app'), key = null, M = null, cur = 1, cache = new Map(), TEXT = null;
+
+  function back() {
+    var h = ''; try { h = sessionStorage.getItem('hub:back') || ''; } catch (e) {}
+    location.href = h || (location.origin + '/leess-teacher/#/teacher-books');
+  }
+  if (!bid) {   // 책장
+    app.innerHTML = '<div class="top"><button type="button" id="bk">‹</button><h1>교사용 교재</h1></div><div class="shelf">' +
+      BOOKS.map(function (b) { return '<a href="?b=' + b.id + '"><span class="ic">📖</span><span><span class="nm">' + esc(b.title) + '</span><span class="ds">' + esc(b.desc) + '</span></span></a>'; }).join('') + '</div>';
+    $('bk').onclick = back; return;
+  }
+  var BI = BOOKS.filter(function (b) { return b.id === bid; })[0] || {title: bid};
+  document.title = BI.short || BI.title;
+
+  async function derive(code) {
+    var base = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name: 'PBKDF2', salt: new TextEncoder().encode('leess-books:' + bid), iterations: 100000, hash: 'SHA-256'},
+      base, {name: 'AES-GCM', length: 256}, false, ['decrypt']);
+  }
+  async function fetchDec(name) {
+    var r = await fetch('books/' + bid + '/' + name);
+    if (!r.ok) throw new Error('http ' + r.status);
+    var b = new Uint8Array(await r.arrayBuffer());
+    return crypto.subtle.decrypt({name: 'AES-GCM', iv: b.slice(0, 12)}, key, b.slice(12));
+  }
+  async function gunzipJson(buf) {
+    var s = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return JSON.parse(await new Response(s).text());
+  }
+  function gate(msg) {
+    app.innerHTML = '<div class="gate"><h2>선생님 코드</h2><p>교사용 교재는 선생님 코드로 잠겨 있습니다. 선생님 앱에서 넣은 코드가 있으면 자동으로 열립니다.</p>' +
+      '<div class="row"><input type="password" id="gc" placeholder="선생님 코드" autocomplete="off"><button type="button" id="go">열기</button></div><div class="msg" id="gm">' + esc(msg || '') + '</div></div>';
+    $('go').onclick = function () { var c = $('gc').value.trim(); if (c) open(c, true); };
+    $('gc').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('go').click(); });
+    $('gc').focus();
+  }
+  async function open(code, typed) {
+    try {
+      key = await derive(code);
+      M = await gunzipJson(await fetchDec('meta.bin'));
+    } catch (e) {
+      key = null;
+      if (/http/.test(String(e))) return gate('책 파일을 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+      return gate(typed ? '코드가 맞지 않습니다.' : '');
+    }
+    if (typed) ls.set(CK, code);
+    reader();
+  }
+
+  function reader() {
+    app.innerHTML = '<div class="top"><button type="button" id="bk" aria-label="뒤로">‹</button><h1>' + esc(M.short) + '<span class="sub" id="where"></span></h1>' +
+      '<button type="button" id="tocB">목차</button><button type="button" id="seaB" aria-label="검색">🔍</button></div>' +
+      '<div class="stage"><div class="page" id="pg" style="aspect-ratio:1/' + M.ratio + '"><img id="im" alt=""><div class="ph" id="ph">불러오는 중…</div></div></div>' +
+      '<div class="bot"><button type="button" id="pv" aria-label="앞 쪽">◀</button><input type="range" id="rg" min="1" max="' + M.n + '" step="1">' +
+      '<span class="pn"><input id="pi" inputmode="numeric" aria-label="쪽"> / ' + M.n + '</span><button type="button" id="nx" aria-label="다음 쪽">▶</button></div>' +
+      '<section class="panel" id="toc" hidden><div class="ph2"><button type="button" class="x">닫기</button><input id="tf" placeholder="' + (M.sec ? '절 번호(예 135) 또는 낱말' : '낱말로 거르기') + '" autocomplete="off"></div><ul id="tl"></ul></section>' +
+      '<section class="panel" id="sea" hidden><div class="ph2"><button type="button" class="x">닫기</button><input id="sf" type="search" placeholder="본문 검색(영어 낱말·구)" autocomplete="off"></div><div class="hint" id="sh"></div><ul id="sl"></ul></section>';
+    $('bk').onclick = back;
+    $('pv').onclick = function () { go(cur - 1); };
+    $('nx').onclick = function () { go(cur + 1); };
+    $('rg').oninput = function () { $('pi').value = this.value; };
+    $('rg').onchange = function () { go(+this.value); };
+    $('pi').addEventListener('keydown', function (e) { if (e.key === 'Enter') { go(parseInt(this.value, 10) || cur); this.blur(); } });
+    $('tocB').onclick = openToc;
+    $('seaB').onclick = openSearch;
+    document.querySelectorAll('.panel .x').forEach(function (b) { b.onclick = function () { b.closest('.panel').hidden = true; }; });
+    $('tf').oninput = drawToc;
+    $('tf').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var v = this.value.trim();
+      if (M.sec && /^\d{1,3}$/.test(v)) { var p = secPage(+v); if (p) { $('toc').hidden = true; go(p); } }
+    });
+    var st;
+    $('sf').oninput = function () { clearTimeout(st); var v = this.value; st = setTimeout(function () { search(v); }, 250); };
+    // 넘기기: 쪽 왼쪽·오른쪽 1/3 누르기, 옆으로 밀기, 화살표 키
+    var pg = $('pg'), sx = 0, sy = 0, t0 = 0;
+    pg.addEventListener('touchstart', function (e) { if (e.touches.length !== 1) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; t0 = Date.now(); }, {passive: true});
+    pg.addEventListener('touchend', function (e) {
+      if (sx == null || (window.visualViewport && visualViewport.scale > 1.05)) return;
+      var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy) && Date.now() - t0 < 800) go(cur + (dx < 0 ? 1 : -1));
+    });
+    pg.addEventListener('click', function (e) {
+      if (window.visualViewport && visualViewport.scale > 1.05) return;
+      var r = pg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width;
+      if (x < .3) go(cur - 1); else if (x > .7) go(cur + 1);
+    });
+    addEventListener('keydown', function (e) {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') go(cur + 1);
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(cur - 1);
+    });
+    addEventListener('popstate', function () { var p = parseInt(new URLSearchParams(location.search).get('p'), 10); if (p) go(p, true); });
+    var s = parseInt(q.get('s'), 10), p = parseInt(q.get('p'), 10);
+    go(s && M.sec ? secPage(s) : (p || ls.get('book:' + bid + ':p') || 1), true);
+  }
+  function secPage(n) {
+    var best = null;
+    M.toc.forEach(function (x) { if (x.s != null && x.s <= n && (!best || x.s >= best.s)) best = x; });
+    return best && best.p;
+  }
+  function tocAt(p) {
+    var t = null; M.toc.forEach(function (x) { if (x.p <= p) t = x; }); return t;
+  }
+  async function img(p) {
+    if (cache.has(p)) return cache.get(p);
+    var pr = fetchDec('p' + String(p).padStart(4, '0') + '.bin').then(function (buf) { return URL.createObjectURL(new Blob([buf], {type: 'image/webp'})); });
+    cache.set(p, pr);
+    pr.catch(function () { cache.delete(p); });
+    if (cache.size > 16) { var k = cache.keys().next().value; var old = cache.get(k); cache.delete(k); old.then(URL.revokeObjectURL).catch(function () {}); }
+    return pr;
+  }
+  async function go(p, noPush) {
+    p = Math.max(1, Math.min(M.n, p | 0));
+    var changed = p !== cur; cur = p;
+    $('rg').value = p; $('pi').value = p; $('pv').disabled = p <= 1; $('nx').disabled = p >= M.n;
+    var t = tocAt(p); $('where').textContent = t ? t.t : '';
+    ls.set('book:' + bid + ':p', p);
+    var u = new URL(location.href); u.searchParams.set('p', p); u.searchParams.delete('s');
+    if (!noPush && changed) history.pushState(null, '', u); else history.replaceState(null, '', u);
+    $('ph').hidden = false; $('ph').textContent = '불러오는 중…';
+    try {
+      var src = await img(p);
+      if (cur !== p) return;
+      $('im').src = src; $('ph').hidden = true;
+      if (changed) window.scrollTo(0, 0);
+    } catch (e) { if (cur === p) $('ph').textContent = '이 쪽을 불러오지 못했습니다.'; }
+    [p + 1, p + 2, p - 1].forEach(function (x) { if (x >= 1 && x <= M.n) img(x).catch(function () {}); });
+  }
+  function openToc() { $('toc').hidden = false; $('tf').value = ''; drawToc(); var c = document.querySelector('#tl .cur'); if (c) c.scrollIntoView({block: 'center'}); }
+  function drawToc() {
+    var v = $('tf').value.trim().toLowerCase(), t = tocAt(cur), h = '', par = '';
+    M.toc.forEach(function (x) {
+      if (x.lv === 1) par = x.t;
+      if (v && x.t.toLowerCase().indexOf(v) < 0 && String(x.s) !== v) return;
+      var g = v && x.lv > 1 && par ? '<span class="sn">' + esc(par) + '</span>' : '';   // 거를 때는 어느 장·레벨인지 함께
+      h += '<li class="l' + x.lv + (x === t ? ' cur' : '') + '"><a href="#" data-p="' + x.p + '"><span class="t">' + esc(x.t) + g + '</span><span class="p">' + x.p + '쪽</span></a></li>';
+    });
+    $('tl').innerHTML = h || '<li><a href="#" data-p="0"><span class="t">찾는 항목이 없습니다</span></a></li>';
+    $('tl').querySelectorAll('a').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); var p = +a.dataset.p; if (p) { $('toc').hidden = true; go(p); } }; });
+  }
+  async function openSearch() {
+    $('sea').hidden = false; $('sf').focus();
+    if (!TEXT) { $('sh').textContent = '본문을 불러오는 중…'; try { TEXT = await gunzipJson(await fetchDec('text.bin')); $('sh').textContent = '낱말을 넣으세요.'; } catch (e) { $('sh').textContent = '본문을 불러오지 못했습니다.'; } }
+  }
+  function search(v) {
+    v = v.trim(); if (!TEXT) return;
+    if (v.length < 2) { $('sl').innerHTML = ''; $('sh').textContent = '두 글자 이상 넣으세요.'; return; }
+    var re = new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'i'), h = '', n = 0;
+    for (var i = 0; i < TEXT.length && n < 200; i++) {
+      var s = TEXT[i].replace(/-\n(?=[a-z])/g, '').replace(/\n/g, ' '), m = s.match(re);
+      if (!m) continue;
+      n++;
+      var a = Math.max(0, m.index - 50), sn = esc(s.slice(a, m.index)) + '<mark>' + esc(m[0]) + '</mark>' + esc(s.slice(m.index + m[0].length, m.index + m[0].length + 70));
+      var t = tocAt(i + 1);
+      h += '<li><a href="#" data-p="' + (i + 1) + '"><span class="t">' + esc(t ? t.t : '') + '<span class="sn">…' + sn + '…</span></span><span class="p">' + (i + 1) + '쪽</span></a></li>';
+    }
+    $('sh').textContent = n ? n + '쪽' + (n >= 200 ? ' 이상' : '') + '에서 찾음' : '찾지 못했습니다.';
+    $('sl').innerHTML = h;
+    $('sl').querySelectorAll('a').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); $('sea').hidden = true; go(+a.dataset.p); }; });
+  }
+
+  var c = ls.get(CK);
+  if (c) open(String(c), false); else gate('');
+})();
+</script>
+</body>
+</html>
