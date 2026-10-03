@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Practical English Usage</title>
+<style>
+:root{--blue:#0d3880;--link:#004aac;--band:#1a4b9c;--yel:#fbe46a;--ink:#333;--mut:#6b7280;--line:#d9dee7;--bg:#fff;--side:#f6f7f9}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Open Sans",-apple-system,"Apple SD Gothic Neo",sans-serif;-webkit-text-size-adjust:100%}
+a{color:var(--link);text-decoration:none}
+button{font:inherit;cursor:pointer}
+.top{position:sticky;top:0;z-index:20;background:var(--band);padding:8px 12px calc(8px) 12px;padding-top:max(8px,env(safe-area-inset-top));display:flex;gap:8px;align-items:center}
+.top .bk{background:none;border:0;color:#fff;font-size:26px;line-height:1;padding:0 6px}
+.pill{background:var(--yel);color:#222;font-weight:600;border-radius:4px 0 0 4px;padding:7px 10px;white-space:nowrap;font-size:14px}
+.sbox{flex:1;display:flex;min-width:0}
+.sbox input{flex:1;min-width:0;border:0;padding:7px 10px;font:inherit;font-size:15px;border-radius:0 4px 4px 0;outline:none}
+.top .tc{background:#fff;border:0;border-radius:4px;padding:6px 10px;color:var(--blue);font-weight:600;font-size:14px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;gap:24px;padding:14px 16px 60px}
+main{flex:1;min-width:0;max-width:860px}
+aside{width:280px;flex:none}
+@media (max-width:999px){aside{display:none}.wrap{padding:12px 12px 60px}}
+@media (min-width:1000px){.top .tc{display:none}}
+.crumb{font-size:13px;color:var(--mut);margin:0 0 6px}
+.crumb a{color:var(--link)}
+.pg{position:relative;width:100%;background:#fff}
+.pg img{display:block;width:100%;height:auto}
+.pg .ph{width:100%;background:repeating-linear-gradient(180deg,#f3f4f6 0 22px,#fff 22px 44px)}
+.pg a.hl{position:absolute;display:block;border-radius:3px}
+.pg a.hl:active,.pg a.hl:hover{background:rgba(0,74,172,.14)}
+.nav{display:flex;justify-content:space-between;margin:18px 0 0}
+.nav button{background:var(--blue);color:#fff;border:0;border-radius:18px;padding:7px 16px;font-size:13px}
+.nav button[disabled]{visibility:hidden}
+.flash{animation:fl 1.6s ease-out}
+@keyframes fl{0%{background:rgba(251,228,106,.9)}100%{background:transparent}}
+.mark{position:absolute;left:0;right:0;height:0}
+/* 목차 */
+.toc{border:1px solid var(--line);border-radius:4px;background:var(--side);font-size:14px}
+.toc h3{margin:0;padding:8px 12px;font-size:14px;background:#e9ecf1;border-bottom:1px solid var(--line)}
+.toc .dv{display:block;padding:8px 12px 4px}
+.toc ul{list-style:none;margin:0;padding:4px 0 8px}
+.toc li.s>button{display:flex;gap:8px;width:100%;text-align:left;background:none;border:0;padding:5px 12px;color:#494949}
+.toc li.s>button b{color:var(--link);width:12px;flex:none;font-weight:700}
+.toc li.s.on>button{color:#111;font-weight:600}
+.toc ol{list-style:none;margin:0;padding:0 0 4px 32px}
+.toc ol a{display:block;padding:3px 8px 3px 0;color:var(--link);font-size:13.5px}
+.toc ol a.cur{background:#e3e7ee;color:#111;border-radius:3px;padding-left:4px}
+aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
+.drawer{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.35);display:flex;justify-content:flex-end}
+.drawer[hidden]{display:none}
+.drawer .toc{width:min(340px,88vw);height:100%;overflow:auto;border-radius:0;padding-top:env(safe-area-inset-top)}
+.drawer .x{position:sticky;top:0;float:right;background:none;border:0;font-size:24px;padding:4px 12px}
+/* 첫 화면 */
+.home h1{font-weight:400;font-size:28px;margin:6px 0 2px;color:#222}
+.home .by{color:var(--mut);margin:0 0 16px}
+.home .lead{margin:0 0 18px}
+.home h2{font-weight:400;font-size:20px;margin:22px 0 8px;display:flex;align-items:baseline;gap:12px}
+.home h2 a{font-size:14px}
+.sec{border-top:1px solid var(--line)}
+.sec>button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:11px 4px;text-align:left;color:#222;font-size:16px}
+.sec>button b{color:var(--link);font-size:18px;width:14px}
+.sec>button .no{color:var(--mut);font-size:13px;width:26px;flex:none}
+.sec ol{list-style:none;margin:0 0 10px;padding:0 0 0 54px}
+.sec ol a{display:flex;gap:10px;padding:4px 0}
+.sec ol a span{color:var(--mut);width:30px;flex:none}
+.hits a{display:block;padding:10px 4px;border-top:1px solid var(--line);color:var(--ink)}
+.hits a b{color:var(--link);font-weight:600}
+.hits a small{display:block;color:var(--mut);font-size:13px}
+.hits mark{background:#fff3a8}
+.gate{max-width:380px;margin:60px auto;padding:0 16px;text-align:center}
+.gate input{width:100%;padding:11px;font-size:16px;border:1px solid #c5ccd8;border-radius:6px;margin:12px 0}
+.gate button{width:100%;padding:11px;background:var(--blue);color:#fff;border:0;border-radius:6px;font-size:16px}
+.gate .msg{color:#b91c1c;min-height:1.4em;margin-top:8px}
+.note{color:var(--mut);font-size:13px;margin-top:28px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* PEU 온라인판 뷰어(2026-10-03) — 옥스퍼드 PEU 화면 저장 PDF(1~28장)를 본문 단만 잘라 암호화(peuol.py).
+   내용 열쇠는 선생님 코드(leess:tcode) 또는 학생 코드(leess:scode)로 푼다. 주소: #/ · #/s/3 · #/e/30 · #/e/30.2 · #/q/검색어 */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
+  var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+            set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
+  var B = 'books/peuol/', app = $('app'), K = null, M = null, TEXT = null, cache = new Map();
+
+  function back() {
+    var h = ''; try { h = sessionStorage.getItem('hub:back') || ''; } catch (e) {}
+    if (h) { location.href = h; return; }
+    location.href = location.origin + (ls.get('leess:tcode') ? '/leess-teacher/#/teacher-books' : '/leess/#/teacher-books');
+  }
+  async function fetchBin(name) {
+    var r = await fetch(B + name, /^(key|meta|text)/.test(name) ? {cache: 'no-cache'} : {});
+    if (!r.ok) throw new Error('http ' + r.status);
+    return new Uint8Array(await r.arrayBuffer());
+  }
+  async function dec(key, b) { return crypto.subtle.decrypt({name: 'AES-GCM', iv: b.slice(0, 12)}, key, b.slice(12)); }
+  async function unwrap(code, which) {
+    var base = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveKey']);
+    var kk = await crypto.subtle.deriveKey({name: 'PBKDF2', salt: new TextEncoder().encode('leess-books:peuol'), iterations: 100000, hash: 'SHA-256'},
+      base, {name: 'AES-GCM', length: 256}, false, ['decrypt']);
+    var raw = await dec(kk, await fetchBin('key.' + which + '.bin'));
+    return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+  }
+  async function gunzipJson(buf) {
+    var s = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return JSON.parse(await new Response(s).text());
+  }
+  async function tryCode(code) {   // 선생님 열쇠 → 학생 열쇠 순서
+    for (var w of ['t', 's']) {
+      try { var k = await unwrap(code, w); return {k: k, w: w}; } catch (e) { if (/http/.test(String(e))) throw e; }
+    }
+    return null;
+  }
+  function gate(msg) {
+    app.innerHTML = '<div class="top"><button class="bk" id="bk" aria-label="뒤로">‹</button><span class="pill" style="border-radius:4px">Practical English Usage</span></div>' +
+      '<div class="gate"><h2>코드 입력</h2><p>이 교재는 잠겨 있습니다. 선생님 코드나 학생 코드를 한 번 넣으면 다음부터 자동으로 열립니다.</p>' +
+      '<input type="password" id="gc" placeholder="코드" autocomplete="off"><button id="go">열기</button><div class="msg" id="gm">' + esc(msg || '') + '</div></div>';
+    $('bk').onclick = back;
+    $('go').onclick = async function () {
+      var c = $('gc').value.trim(); if (!c) return;
+      $('gm').textContent = '여는 중…';
+      try {
+        var r = await tryCode(c);
+        if (!r) { $('gm').textContent = '코드가 맞지 않습니다.'; return; }
+        ls.set(r.w === 't' ? 'leess:tcode' : 'leess:scode', c); K = r.k; start();
+      } catch (e) { $('gm').textContent = '파일을 불러오지 못했습니다. 인터넷 연결을 확인하세요.'; }
+    };
+    $('gc').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('go').click(); });
+    $('gc').focus();
+  }
+  async function boot() {
+    app.innerHTML = '<p style="padding:40px;text-align:center;color:#6b7280">불러오는 중…</p>';
+    var codes = [['t', ls.get('leess:tcode')], ['s', ls.get('leess:scode')]];
+    for (var c of codes) {
+      if (!c[1]) continue;
+      try { K = await unwrap(c[1], c[0]); break; } catch (e) {
+        if (/http/.test(String(e))) return gate('파일을 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+      }
+    }
+    if (!K) return gate('');
+    start();
+  }
+  async function start() {
+    try { M = await gunzipJson(await dec(K, await fetchBin('meta.bin'))); }
+    catch (e) { K = null; return gate('파일을 불러오지 못했습니다.'); }
+    M.byPage = M.pages;
+    shell();
+    addEventListener('hashchange', route);
+    route();
+  }
+
+  /* ---------- 틀 ---------- */
+  function tocHTML() {
+    return '<div class="toc"><h3>Contents overview</h3><a class="dv" href="#/">see detailed version</a><ul>' +
+      M.secs.map(function (s) {
+        return '<li class="s" data-s="' + s.n + '"><button type="button"><b>+</b><span>' + esc(s.title) + '</span></button><ol hidden>' +
+          '<li><a href="#/s/' + s.n + '" data-p="' + s.intro + '">Introduction</a></li>' +
+          s.entries.map(function (e) { return '<li><a href="#/e/' + e.n + '" data-p="' + e.p + '">' + esc(e.t) + '</a></li>'; }).join('') + '</ol></li>';
+      }).join('') + '</ul></div>';
+  }
+  function bindToc(root) {
+    root.querySelectorAll('li.s>button').forEach(function (b) {
+      b.onclick = function () { var li = b.parentNode, ol = li.querySelector('ol'); ol.hidden = !ol.hidden; li.classList.toggle('on', !ol.hidden); b.querySelector('b').textContent = ol.hidden ? '+' : '−'; };
+    });
+    root.querySelectorAll('ol a').forEach(function (a) { a.addEventListener('click', function () { $('dr').hidden = true; }); });
+  }
+  function markToc(pid) {
+    document.querySelectorAll('.toc').forEach(function (t) {
+      t.querySelectorAll('a.cur').forEach(function (a) { a.classList.remove('cur'); });
+      var a = t.querySelector('ol a[data-p="' + pid + '"]'); if (!a) return;
+      a.classList.add('cur');
+      var li = a.closest('li.s'), ol = li.querySelector('ol');
+      if (ol.hidden) { ol.hidden = false; li.classList.add('on'); li.querySelector('b').textContent = '−'; }
+    });
+  }
+  function shell() {
+    app.innerHTML = '<div class="top"><button class="bk" id="bk" aria-label="뒤로">‹</button>' +
+      '<a class="pill" href="#/">Practical English Usage</a><form class="sbox" id="sf"><input id="q" type="search" placeholder="Search PEU (번호·제목·본문)" enterkeyhint="search"></form>' +
+      '<button class="tc" id="tc" type="button">목차</button></div>' +
+      '<div class="wrap"><main id="main"></main><aside id="side">' + tocHTML() + '</aside></div>' +
+      '<div class="drawer" id="dr" hidden><div class="toc-host" style="height:100%">' + tocHTML().replace('<div class="toc">', '<div class="toc"><button class="x" id="dx" type="button">×</button>') + '</div></div>';
+    $('bk').onclick = back;
+    $('tc').onclick = function () { $('dr').hidden = false; };
+    $('dr').onclick = function (e) { if (e.target === $('dr')) $('dr').hidden = true; };
+    $('dx').onclick = function () { $('dr').hidden = true; };
+    bindToc($('side')); bindToc($('dr'));
+    $('sf').onsubmit = function (e) {
+      e.preventDefault(); var v = $('q').value.trim(); if (!v) return;
+      var m = v.match(/^(\d{1,3})(?:\.(\d{1,2}))?$/);
+      if (m && M.ent[m[1]] != null) { location.hash = '#/e/' + v; } else { location.hash = '#/q/' + encodeURIComponent(v); }
+      $('q').blur();
+    };
+  }
+
+  /* ---------- 화면 ---------- */
+  function route() {
+    var h = location.hash.replace(/^#\/?/, ''), m;
+    if ((m = h.match(/^s\/(\d+)/))) { var s = M.secs.filter(function (x) { return x.n === +m[1]; })[0]; if (s) return page(s.intro, null); }
+    if ((m = h.match(/^e\/(\d+)(?:\.(\d+))?/))) { var p = M.ent[m[1]]; if (p != null) return page(p, m[2] ? +m[2] : null); }
+    if ((m = h.match(/^q\/(.+)/))) return search(decodeURIComponent(m[1]));
+    home();
+  }
+  function home() {
+    document.title = 'Practical English Usage';
+    markToc(-1);
+    var last = ls.get('peuol:last');
+    $('main').innerHTML = '<div class="home"><h1>Practical English Usage</h1><p class="by">by Michael Swan</p>' +
+      (last != null && M.pages[last] ? '<p class="lead">이어 보기: <a href="' + hashOf(last) + '">' + esc(label(last)) + '</a></p>' : '') +
+      '<h2>Contents <a href="#" id="ex">모두 펼치기</a></h2>' +
+      M.secs.map(function (s) {
+        return '<div class="sec"><button type="button"><b>+</b><span class="no">' + s.n + '</span><span>' + esc(s.title) + '</span></button><ol hidden>' +
+          '<li><a href="#/s/' + s.n + '"><span></span>Introduction</a></li>' +
+          s.entries.map(function (e) { return '<li><a href="#/e/' + e.n + '"><span>' + e.n + '</span>' + esc(e.t) + '</a></li>'; }).join('') + '</ol></div>';
+      }).join('') + '<p class="note">본문은 소장 중인 PEU 화면 저장본(1~28장)입니다. 29장 이후(Vocabulary Areas 등)로 가는 참조는 자료에 없어 눌리지 않습니다.</p></div>';
+    var secs = $('main').querySelectorAll('.sec');
+    secs.forEach(function (d) { d.querySelector('button').onclick = function () { var ol = d.querySelector('ol'); ol.hidden = !ol.hidden; d.querySelector('b').textContent = ol.hidden ? '+' : '−'; }; });
+    $('ex').onclick = function (e) {
+      e.preventDefault(); var open = this.textContent === '모두 펼치기';
+      secs.forEach(function (d) { d.querySelector('ol').hidden = !open; d.querySelector('b').textContent = open ? '−' : '+'; });
+      this.textContent = open ? '모두 접기' : '모두 펼치기';
+    };
+    scrollTo(0, 0);
+  }
+  function hashOf(pid) { var p = M.pages[pid]; return p.k === 'intro' ? '#/s/' + p.s : '#/e/' + p.n; }
+  function secOf(n) { return M.secs.filter(function (x) { return x.n === n; })[0]; }
+  function label(pid) { var p = M.pages[pid]; return p.k === 'intro' ? 'Section ' + p.s + ' ' + secOf(p.s).title : p.n + ' ' + p.t; }
+
+  function img(pid) {
+    if (cache.has(pid)) return cache.get(pid);
+    var pr = fetchBin('p' + String(pid + 1).padStart(4, '0') + '.bin').then(function (b) { return dec(K, b); })
+      .then(function (buf) { return URL.createObjectURL(new Blob([buf], {type: 'image/webp'})); });
+    cache.set(pid, pr); pr.catch(function () { cache.delete(pid); });
+    if (cache.size > 12) { var k = cache.keys().next().value; var old = cache.get(k); cache.delete(k); old.then(URL.revokeObjectURL).catch(function () {}); }
+    return pr;
+  }
+  async function page(pid, sub) {
+    var p = M.pages[pid], s = secOf(p.s);
+    document.title = (p.k === 'intro' ? s.title : p.n + ' ' + p.t) + ' · PEU';
+    ls.set('peuol:last', pid);
+    markToc(pid);
+    $('main').innerHTML = '<p class="crumb"><a href="#/">PEU</a> › <a href="#/s/' + s.n + '">' + esc(s.title) + '</a></p>' +
+      '<div class="pg" id="pg"><div class="ph" style="aspect-ratio:1/' + p.h + '"></div>' +
+      p.l.map(function (l) {
+        var b = l.b, pad = 0.004;
+        return '<a class="hl" href="#/e/' + l.e + (l.s ? '.' + l.s : '') + '" style="left:' + ((b[0] - pad) * 100) + '%;top:' + ((b[1] - pad / p.h) * 100) + '%;width:' + ((b[2] + 2 * pad) * 100) + '%;height:' + ((b[3] + 2 * pad / p.h) * 100) + '%" aria-label="' + l.e + (l.s ? '.' + l.s : '') + '"></a>';
+      }).join('') + '</div>' +
+      '<div class="nav"><button type="button" id="pv"' + (pid ? '' : ' disabled') + '>‹ previous</button><button type="button" id="nx"' + (pid < M.pages.length - 1 ? '' : ' disabled') + '>next ›</button></div>';
+    $('pv').onclick = function () { location.hash = hashOf(pid - 1); };
+    $('nx').onclick = function () { location.hash = hashOf(pid + 1); };
+    var y = sub != null && p.u && p.u[sub] != null ? p.u[sub] : null;
+    if (y == null) scrollTo(0, 0);
+    try {
+      var url = await img(pid);
+      if (M.pages[pid] !== p || !$('pg')) return;
+      var im = new Image(); im.alt = label(pid); im.src = url;
+      await (im.decode ? im.decode().catch(function () {}) : null);
+      var ph = $('pg').querySelector('.ph'); if (ph) ph.replaceWith(im);
+    } catch (e) {
+      var ph2 = $('pg') && $('pg').querySelector('.ph'); if (ph2) ph2.outerHTML = '<p style="padding:30px;color:#b91c1c">화면을 불러오지 못했습니다. 다시 눌러 보세요.</p>';
+    }
+    if (y != null) {
+      var pg = $('pg'), top = pg.getBoundingClientRect().top + scrollY + y * pg.offsetHeight - 70;
+      scrollTo({top: Math.max(0, top), behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto'});
+      var mk = document.createElement('div'); mk.className = 'mark flash'; mk.style.top = (y * 100) + '%'; mk.style.height = '28px'; pg.appendChild(mk);
+    }
+    [pid + 1, pid - 1].forEach(function (x) { if (x >= 0 && x < M.pages.length) img(x).catch(function () {}); });
+  }
+  async function search(v) {
+    document.title = v + ' · PEU 검색';
+    markToc(-1);
+    $('q').value = v;
+    $('main').innerHTML = '<p class="crumb"><a href="#/">PEU</a> › 검색</p><p>찾는 중…</p>';
+    if (!TEXT) { try { TEXT = await gunzipJson(await dec(K, await fetchBin('text.bin'))); } catch (e) { $('main').innerHTML = '<p>검색 자료를 불러오지 못했습니다.</p>'; return; } }
+    var lv = v.toLowerCase(), title = [], body = [];
+    M.pages.forEach(function (p, i) {
+      var t = p.k === 'intro' ? secOf(p.s).title : p.t;
+      if (t.toLowerCase().indexOf(lv) >= 0) title.push(i);
+      else if (TEXT[i].toLowerCase().indexOf(lv) >= 0) body.push(i);
+    });
+    var re = new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+    function snip(i) {
+      var tx = TEXT[i], k = tx.toLowerCase().indexOf(lv); if (k < 0) return '';
+      var a = Math.max(0, k - 60), s = (a ? '…' : '') + tx.slice(a, k + lv.length + 80) + '…';
+      return esc(s).replace(re, function (x) { return '<mark>' + x + '</mark>'; });
+    }
+    var all = title.concat(body);
+    $('main').innerHTML = '<p class="crumb"><a href="#/">PEU</a> › 검색</p><h2 style="font-weight:400;margin:4px 0 10px">“' + esc(v) + '” ' + all.length + '곳</h2><div class="hits">' +
+      all.slice(0, 200).map(function (i) { return '<a href="' + hashOf(i) + '"><b>' + esc(label(i)) + '</b><small>' + snip(i) + '</small></a>'; }).join('') +
+      (all.length ? '' : '<p>찾은 곳이 없습니다.</p>') + '</div>';
+    scrollTo(0, 0);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
