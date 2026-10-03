@@ -76,7 +76,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true}, {"id": "egu5-s", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 357쪽(Key 뺌)", "student": true, "scroll": true}, {"id": "giui-s", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "student": true, "scroll": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true}, {"id": "giu-s", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽", "student": true, "scroll": true}];
+  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1790994581}, {"id": "egu5-s", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 357쪽(Key 뺌)", "student": true, "scroll": true, "v": 1790995632}, {"id": "giui-s", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "student": true, "scroll": true, "v": 1790995648}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1790994600}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791002921}, {"id": "giu-s", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽", "student": true, "scroll": true, "v": 1791002937}];
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
@@ -102,10 +102,22 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     return crypto.subtle.deriveKey({name: 'PBKDF2', salt: new TextEncoder().encode('leess-books:' + bid), iterations: 100000, hash: 'SHA-256'},
       base, {name: 'AES-GCM', length: 256}, false, ['decrypt']);
   }
+  // 속도(10-03): 받은 파일(암호화된 그대로)을 기기 Cache Storage에 남겨 다음부터는 내려받지 않는다. 판 번호(BI.v)가 바뀌면 새 칸.
+  var CN = 'lb:' + bid + ':' + (BI.v || 0), CS = null;
+  try { if (window.caches) { CS = caches.open(CN).catch(function () { return null; });
+    caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('lb:' + bid + ':') === 0 && k !== CN) caches.delete(k); }); }).catch(function () {}); } } catch (e) { CS = null; }
+  async function getBin(name) {
+    var url = 'books/' + bid + '/' + name, c = CS && await CS, r = null;
+    if (c) try { r = await c.match(url); } catch (e) { r = null; }
+    if (!r) {
+      r = await fetch(url);
+      if (!r.ok) throw new Error('http ' + r.status);
+      if (c) try { c.put(url, r.clone()).catch(function () {}); } catch (e) {}
+    }
+    return new Uint8Array(await r.arrayBuffer());
+  }
   async function fetchDec(name) {
-    var r = await fetch('books/' + bid + '/' + name);
-    if (!r.ok) throw new Error('http ' + r.status);
-    var b = new Uint8Array(await r.arrayBuffer());
+    var b = await getBin(name);
     return crypto.subtle.decrypt({name: 'AES-GCM', iv: b.slice(0, 12)}, key, b.slice(12));
   }
   async function gunzipJson(buf) {
@@ -209,15 +221,28 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     $('stg').innerHTML = h;
     EL = [null].concat([].slice.call($('stg').children));
     var io = new IntersectionObserver(function (es) {
-      es.forEach(function (e) { var p = +e.target.dataset.p; if (e.isIntersecting) show(p); });
-    }, {rootMargin: '150% 0px'});
+      es.forEach(function (e) { var p = +e.target.dataset.p; if (e.isIntersecting) show(p); else if (Q.has(p)) { Q.delete(p); SHOWN.delete(p); } });
+    }, {rootMargin: '120% 0px'});
     EL.forEach(function (el) { if (el) io.observe(el); });
     addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; track(); }); } }, {passive: true});
   }
+  // 속도(10-03): 화면 근처 쪽을 한꺼번에 부르지 않고, 지금 쪽에서 가까운 것부터 한 번에 MAXC쪽씩
+  var Q = new Set(), RUN = 0, MAXC = 2;
   function show(p) {
     if (SHOWN.has(p)) return; SHOWN.add(p);
+    if (cache.has(p)) return paint(p);
+    Q.add(p); pump();
+  }
+  function pump() {
+    while (RUN < MAXC && Q.size) {
+      var b = null; Q.forEach(function (x) { if (b === null || Math.abs(x - cur) < Math.abs(b - cur)) b = x; });
+      Q.delete(b); RUN++;
+      paint(b).then(function () { RUN--; pump(); });
+    }
+  }
+  function paint(p) {
     var el = EL[p];
-    img(p).then(function (u) { if (!SHOWN.has(p)) return; el.querySelector('img').src = u; el.querySelector('.ph').hidden = true; hot(el, p); })
+    return img(p).then(function (u) { if (!SHOWN.has(p)) return; var im = el.querySelector('img'); im.src = u; el.querySelector('.ph').hidden = true; hot(el, p); })
       .catch(function () { SHOWN.delete(p); el.querySelector('.ph').textContent = '이 쪽을 불러오지 못했습니다.'; });
   }
   function trim() {   // 메모리: 지금 쪽에서 먼 것부터 30쪽 넘게는 비운다
@@ -244,7 +269,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
   }
   async function go(p, noPush) {
     p = Math.max(1, Math.min(M.n, p | 0));
-    if (SCR) { mark(p); show(p); window.scrollTo(0, EL[p].getBoundingClientRect().top + scrollY - topH() - 6); return; }
+    if (SCR) { mark(p); Q.clear(); show(p); window.scrollTo(0, EL[p].getBoundingClientRect().top + scrollY - topH() - 6); return; }
     var changed = p !== cur; cur = p;
     $('rg').value = p; $('pi').value = p; $('pv').disabled = p <= 1; $('nx').disabled = p >= M.n;
     var t = tocAt(p); $('where').textContent = t ? t.t : '';
