@@ -61,7 +61,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽"}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽"}, {"id": "gskey", "short": "Grammar Scan 답지", "title": "Grammar Scan (답지)", "desc": "Answer Key · 49쪽"}];
+  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽"}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽"}];
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
