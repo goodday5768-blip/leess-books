@@ -61,7 +61,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "gscan", "short": "Grammar Scan", "title": "Grammar Scan (문제)", "desc": "PEU 3판 진단 테스트 88개 · Upper Intermediate·Advanced·Expert · 198쪽"}, {"id": "gskey", "short": "Grammar Scan 답지", "title": "Grammar Scan (답지)", "desc": "Answer Key · 49쪽"}];
+  var BOOKS = [{"id": "gscan", "short": "Grammar Scan", "title": "Grammar Scan (문제)", "desc": "PEU 3판 진단 테스트 88개 · Upper Intermediate·Advanced·Expert · 198쪽"}, {"id": "gscan-s", "short": "Grammar Scan", "title": "Grammar Scan (학생용)", "desc": "학생 앱 교사용 폴더 · 학생 코드로 열림 · 198쪽", "student": true}, {"id": "gskey", "short": "Grammar Scan 답지", "title": "Grammar Scan (답지)", "desc": "Answer Key · 49쪽"}];
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
@@ -69,7 +69,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 
   function back() {
     var h = ''; try { h = sessionStorage.getItem('hub:back') || ''; } catch (e) {}
-    location.href = h || (location.origin + '/leess-teacher/#/teacher-books');
+    location.href = h || (location.origin + (STU ? '/leess/#/teacher-books' : '/leess-teacher/#/teacher-books'));
   }
   if (!bid) {   // 책장
     app.innerHTML = '<div class="top"><button type="button" id="bk">‹</button><h1>교사용 교재</h1></div><div class="shelf">' +
@@ -77,6 +77,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     $('bk').onclick = back; return;
   }
   var BI = BOOKS.filter(function (b) { return b.id === bid; })[0] || {title: bid};
+  var STU = !!BI.student;   // 학생 앱 사본(10-03): 학생 코드 자리 leess:scode
+  if (STU) CK = 'leess:scode';
   document.title = BI.short || BI.title;
 
   async function derive(code) {
@@ -95,8 +97,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     return JSON.parse(await new Response(s).text());
   }
   function gate(msg) {
-    app.innerHTML = '<div class="gate"><h2>선생님 코드</h2><p>교사용 교재는 선생님 코드로 잠겨 있습니다. 선생님 앱에서 넣은 코드가 있으면 자동으로 열립니다.</p>' +
-      '<div class="row"><input type="password" id="gc" placeholder="선생님 코드" autocomplete="off"><button type="button" id="go">열기</button></div><div class="msg" id="gm">' + esc(msg || '') + '</div></div>';
+    var W = STU ? '학생 코드' : '선생님 코드';
+    app.innerHTML = '<div class="gate"><h2>' + W + '</h2><p>' + (STU ? '이 교재는 학생 코드로 잠겨 있습니다. 선생님께 받은 코드를 한 번 넣으면 다음부터 자동으로 열립니다.' : '교사용 교재는 선생님 코드로 잠겨 있습니다. 선생님 앱에서 넣은 코드가 있으면 자동으로 열립니다.') + '</p>' +
+      '<div class="row"><input type="password" id="gc" placeholder="' + W + '" autocomplete="off"><button type="button" id="go">열기</button></div><div class="msg" id="gm">' + esc(msg || '') + '</div></div>';
     $('go').onclick = function () { var c = $('gc').value.trim(); if (c) open(c, true); };
     $('gc').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('go').click(); });
     $('gc').focus();
