@@ -17,4 +17,4 @@ self.addEventListener('fetch', e => {
   }
   if (/\/books\/.+\.bin$/.test(r.url)) e.respondWith(fetch(r).catch(() => caches.match(r, {ignoreSearch: true}).then(m => m || Response.error())));
 });
-// build 1791042094
+// build 1791045620
