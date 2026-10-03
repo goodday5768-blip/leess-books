@@ -79,6 +79,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
   var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1790994581, "sm": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1790994600, "sm": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791002921, "sm": true}];
+  try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}   // 오프라인(10-03)
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
@@ -335,7 +336,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     var b = $('dlB'), busy = false, stop = false;
     function label() {
       var m = dlMode(); b.classList.remove('ing'); b.textContent = m ? '✓' : '⬇';
-      b.title = m ? '이 기기에 책 전체를 받아 두었습니다(' + (m === 's' ? '휴대폰용' : '원본 화질') + ')' : '책 전체 받아 두기 — 수업 전에 와이파이에서 한 번';
+      b.title = m ? '이 기기에 책 전체를 받아 두었습니다(' + (m === 's' ? '휴대폰용' : '원본 화질') + ') — 인터넷 없이도 열림' : '책 전체 받아 두기 — 수업 전에 와이파이에서 한 번';
     }
     label();
     b.onclick = async function () {
@@ -343,7 +344,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
       var c = CS && await CS;
       if (!c) return toast('이 브라우저는 기기 저장을 지원하지 않습니다.');
       var m = BI.sm && !needFull() ? 's' : 'p', per = m === 's' ? 0.13 : 0.33;
-      if (dlMode() === m) return toast('이미 받아 두었습니다. 이 기기에서는 내려받지 않고 바로 열립니다.');
+      if (dlMode() === m) return toast('이미 받아 두었습니다. 이 기기에서는 인터넷 없이도 열립니다.');
       var names = ['text.bin'].concat(BI.ans ? ['ans.bin'] : []);
       for (var i = 1; i <= M.n; i++) names.push(m + String(i).padStart(4, '0') + '.bin');
       try {
@@ -366,7 +367,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
       }
       await Promise.all([work(), work(), work()]);
       busy = false;
-      if (!stop && !full && !fail) { ls.set(DLK, {v: BI.v || 0, m: m}); toast('다 받았습니다. 이 기기에서는 이 책을 내려받지 않고 바로 엽니다.', 5000); }
+      if (!stop && !full && !fail) { ls.set(DLK, {v: BI.v || 0, m: m}); toast('다 받았습니다. 이제 이 기기에서는 인터넷 없이도 이 책을 열 수 있습니다.', 6000); }
       else toast(full ? '기기 저장 공간이 모자라 멈췄습니다.' : stop ? '멈췄습니다. 받은 쪽은 남아 있어 다음에 이어 받습니다.' : '일부(' + fail + '개)를 받지 못했습니다. 인터넷을 확인하고 다시 누르세요.', 6000);
       label();
     };
