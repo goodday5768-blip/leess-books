@@ -61,7 +61,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "peu4", "short": "PEU 4판", "title": "Practical English Usage 4판", "desc": "Michael Swan · 2016 · 28개 장 · 756쪽"}, {"id": "peu3", "short": "PEU 3판", "title": "Practical English Usage 3판", "desc": "Michael Swan · 2005 · 가나다순 절 · 689쪽 — Grammar Scan 답지가 가리키는 판"}, {"id": "gscan", "short": "Grammar Scan", "title": "Grammar Scan (문제)", "desc": "PEU 3판 진단 테스트 88개 · Upper Intermediate·Advanced·Expert · 198쪽"}, {"id": "gskey", "short": "Grammar Scan 답지", "title": "Grammar Scan (답지)", "desc": "Answer Key · 49쪽"}];
+  var BOOKS = [{"id": "gscan", "short": "Grammar Scan", "title": "Grammar Scan (문제)", "desc": "PEU 3판 진단 테스트 88개 · Upper Intermediate·Advanced·Expert · 198쪽"}, {"id": "gskey", "short": "Grammar Scan 답지", "title": "Grammar Scan (답지)", "desc": "Answer Key · 49쪽"}];
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
