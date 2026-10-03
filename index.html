@@ -76,7 +76,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1790994581}, {"id": "egu5-s", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 357쪽(Key 뺌)", "student": true, "scroll": true, "v": 1790995632}, {"id": "giui-s", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "student": true, "scroll": true, "v": 1790995648}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1790994600}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791002921}, {"id": "giu-s", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽", "student": true, "scroll": true, "v": 1791002937}];
+  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1790994581, "sm": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1790994600, "sm": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791002921, "sm": true}];
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
@@ -204,11 +204,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
   function tocAt(p) {
     var t = null; M.toc.forEach(function (x) { if (x.p <= p) t = x; }); return t;
   }
-  async function img(p) {
-    if (cache.has(p)) return cache.get(p);
-    var pr = fetchDec('p' + String(p).padStart(4, '0') + '.bin').then(function (buf) { return URL.createObjectURL(new Blob([buf], {type: 'image/webp'})); });
-    cache.set(p, pr);
-    pr.catch(function () { cache.delete(p); });
+  // B안(10-03): small=true면 휴대폰용 작은 쪽(sNNNN.bin). cache 열쇠는 원본 p, 작은 쪽 -p
+  async function img(p, small) {
+    var k = small ? -p : p;
+    if (cache.has(k)) return cache.get(k);
+    var pr = fetchDec((small ? 's' : 'p') + String(p).padStart(4, '0') + '.bin').then(function (buf) { return URL.createObjectURL(new Blob([buf], {type: 'image/webp'})); });
+    cache.set(k, pr);
+    pr.catch(function () { cache.delete(k); });
     if (SCR) { trim(); return pr; }
     if (cache.size > 16) { var k = cache.keys().next().value; var old = cache.get(k); cache.delete(k); old.then(URL.revokeObjectURL).catch(function () {}); }
     return pr;
@@ -223,34 +225,54 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     var io = new IntersectionObserver(function (es) {
       es.forEach(function (e) { var p = +e.target.dataset.p; if (e.isIntersecting) show(p); else if (Q.has(p)) { Q.delete(p); SHOWN.delete(p); } });
     }, {rootMargin: '120% 0px'});
+    if (window.visualViewport) visualViewport.addEventListener('resize', function () { if (needFull()) upNear(); });   // 손가락 확대 → 원본
     EL.forEach(function (el) { if (el) io.observe(el); });
     addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; track(); }); } }, {passive: true});
   }
   // 속도(10-03): 화면 근처 쪽을 한꺼번에 부르지 않고, 지금 쪽에서 가까운 것부터 한 번에 MAXC쪽씩
-  var Q = new Set(), RUN = 0, MAXC = 2;
+  var Q = new Set(), UP = new Set(), RUN = 0, MAXC = 2;
+  function needFull() {   // 작은 쪽(1200px)으로 모자랄 때: 큰 화면(태블릿·PC) 또는 손가락 확대
+    var el = EL[cur], w = (el ? el.clientWidth : innerWidth) * (window.devicePixelRatio || 1);
+    return w > 1320 || !!(window.visualViewport && visualViewport.scale > 1.05);
+  }
+  function upNear() {   // 지금 쪽과 앞뒤 쪽 중 작은 쪽으로 보이는 것을 원본으로
+    if (!BI.sm) return;
+    [cur, cur + 1, cur - 1].forEach(function (x) { if (EL[x] && EL[x].dataset.q === 's' && SHOWN.has(x)) UP.add(x); });
+    pump();
+  }
   function show(p) {
     if (SHOWN.has(p)) return; SHOWN.add(p);
-    if (cache.has(p)) return paint(p);
+    if (cache.has(p) || cache.has(-p)) return paint(p);
     Q.add(p); pump();
   }
+  function near(set) { var b = null; set.forEach(function (x) { if (b === null || Math.abs(x - cur) < Math.abs(b - cur)) b = x; }); return b; }
   function pump() {
-    while (RUN < MAXC && Q.size) {
-      var b = null; Q.forEach(function (x) { if (b === null || Math.abs(x - cur) < Math.abs(b - cur)) b = x; });
-      Q.delete(b); RUN++;
-      paint(b).then(function () { RUN--; pump(); });
+    while (RUN < MAXC && (Q.size || UP.size)) {
+      var b; RUN++;
+      if (Q.size) { b = near(Q); Q.delete(b); paint(b).then(function () { RUN--; pump(); }); }
+      else { b = near(UP); UP.delete(b); paintFull(b).then(function () { RUN--; pump(); }); }   // 원본 바꿔 끼우기는 화면 쪽을 다 띄운 뒤
     }
   }
   function paint(p) {
+    var el = EL[p], small = !!BI.sm && !cache.has(p);   // 원본을 이미 받았으면 원본
+    return img(p, small).then(function (u) {
+      if (!SHOWN.has(p)) return;
+      el.querySelector('img').src = u; el.dataset.q = small ? 's' : 'f'; el.querySelector('.ph').hidden = true; hot(el, p);
+      if (small && Math.abs(p - cur) <= 1 && needFull()) { UP.add(p); }
+    }).catch(function () { SHOWN.delete(p); el.querySelector('.ph').textContent = '이 쪽을 불러오지 못했습니다.'; });
+  }
+  function paintFull(p) {
     var el = EL[p];
-    return img(p).then(function (u) { if (!SHOWN.has(p)) return; var im = el.querySelector('img'); im.src = u; el.querySelector('.ph').hidden = true; hot(el, p); })
-      .catch(function () { SHOWN.delete(p); el.querySelector('.ph').textContent = '이 쪽을 불러오지 못했습니다.'; });
+    return img(p, false).then(function (u) { if (!SHOWN.has(p) || el.dataset.q !== 's') return; el.querySelector('img').src = u; el.dataset.q = 'f'; }).catch(function () {});
   }
   function trim() {   // 메모리: 지금 쪽에서 먼 것부터 30쪽 넘게는 비운다
     if (cache.size <= 30) return;
-    var ks = [].slice.call(cache.keys()).sort(function (a, b) { return Math.abs(b - cur) - Math.abs(a - cur); });
+    var ks = [].slice.call(cache.keys()).sort(function (a, b) { return Math.abs(Math.abs(b) - cur) - Math.abs(Math.abs(a) - cur); });
     ks.slice(0, cache.size - 30).forEach(function (k) {
-      var pr = cache.get(k); cache.delete(k); SHOWN.delete(k);
-      var el = EL[k]; if (el) { el.querySelector('img').removeAttribute('src'); el.querySelector('.ph').hidden = false; }
+      var p = Math.abs(k), pr = cache.get(k), el = EL[p]; cache.delete(k);
+      if (el && el.dataset.q === (k < 0 ? 's' : 'f')) {   // 보이는 그림을 비울 때만 자리 표시로
+        SHOWN.delete(p); el.removeAttribute('data-q'); el.querySelector('img').removeAttribute('src'); el.querySelector('.ph').hidden = false;
+      }
       pr.then(URL.revokeObjectURL).catch(function () {});
     });
   }
@@ -261,7 +283,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     if (lo !== cur) mark(lo);
   }
   function mark(p) {
-    cur = p;
+    var moved = p !== cur; cur = p;
+    if (moved && SCR && needFull()) upNear();
     $('rg').value = p; $('pi').value = p; $('pv').disabled = p <= 1; $('nx').disabled = p >= M.n;
     var t = tocAt(p); $('where').textContent = t ? t.t : '';
     ls.set('book:' + bid + ':p', p);
