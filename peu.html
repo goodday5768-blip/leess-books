@@ -22,6 +22,9 @@ main{flex:1;min-width:0;max-width:860px}
 aside{width:280px;flex:none}
 @media (max-width:999px){aside{display:none}.wrap{padding:12px 12px 60px}}
 @media (min-width:1000px){.top .tc{display:none}}
+@media (min-width:1000px){.top .tc.dl{display:inline-block}}
+.top .tc.dl.ing{font-variant-numeric:tabular-nums;min-width:52px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;max-width:min(92vw,520px);padding:10px 14px;border-radius:12px;background:#24252b;color:#fff;font-size:14px;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 .crumb{font-size:13px;color:var(--mut);margin:0 0 6px}
 .crumb a{color:var(--link)}
 .pg{position:relative;width:100%;background:#fff}
@@ -86,6 +89,11 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
   var B = 'books/peuol/', app = $('app'), K = null, M = null, TEXT = null, cache = new Map();
+  try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}   // 오프라인(10-03)
+  // 기기 저장(10-03): 받은 파일(암호화된 그대로)을 Cache Storage 'lb:peuol:<판>'에 — 판(PV)은 site_books.py가 meta.bin 시각으로 넣는다
+  var PV = 1790989816, CN = 'lb:peuol:' + PV, CS = null;
+  try { if (window.caches) { CS = caches.open(CN).catch(function () { return null; });
+    caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('lb:peuol:') === 0 && k !== CN) caches.delete(k); }); }).catch(function () {}); } } catch (e) { CS = null; }
 
   function back() {
     var h = ''; try { h = sessionStorage.getItem('hub:back') || ''; } catch (e) {}
@@ -93,9 +101,49 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
     location.href = location.origin + (ls.get('leess:tcode') ? '/leess-teacher/#/teacher-books' : '/leess/#/teacher-books');
   }
   async function fetchBin(name) {
-    var r = await fetch(B + name, /^(key|meta|text)/.test(name) ? {cache: 'no-cache'} : {});
-    if (!r.ok) throw new Error('http ' + r.status);
+    var url = B + name, c = CS && await CS, r = null;
+    if (c) try { r = await c.match(url); } catch (e) { r = null; }
+    if (!r) {
+      r = await fetch(url, /^(key|meta|text)/.test(name) ? {cache: 'no-cache'} : {});
+      if (!r.ok) throw new Error('http ' + r.status);
+      if (c) try { c.put(url, r.clone()).catch(function () {}); } catch (e) {}
+    }
     return new Uint8Array(await r.arrayBuffer());
+  }
+  // 책 전체 받아 두기(10-03): 모든 쪽 + 검색 본문 → 이 기기에서 인터넷 없이도 열림
+  var DLK = 'book:peuol:dl';
+  function toast(msg, ms) {
+    var t = document.querySelector('.toast') || document.body.appendChild(Object.assign(document.createElement('div'), {className: 'toast'}));
+    t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, ms || 4000);
+  }
+  function dlSetup() {
+    var b = $('dlB'), busy = false, stop = false;
+    function label() { var ok = ls.get(DLK) === PV; b.textContent = ok ? '✓' : '⬇'; b.classList.remove('ing'); b.title = ok ? '이 기기에 받아 두었습니다 — 인터넷 없이도 열림' : '책 전체 받아 두기(약 47MB) — 수업 전에 와이파이에서 한 번'; }
+    label();
+    b.onclick = async function () {
+      if (busy) { stop = true; toast('멈추는 중…'); return; }
+      var c = CS && await CS;
+      if (!c) return toast('이 브라우저는 기기 저장을 지원하지 않습니다.');
+      if (ls.get(DLK) === PV) return toast('이미 받아 두었습니다. 이 기기에서는 인터넷 없이도 열립니다.');
+      var names = ['text.bin'];
+      for (var i = 1; i <= M.pages.length; i++) names.push('p' + String(i).padStart(4, '0') + '.bin');
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}
+      busy = true; stop = false; b.classList.add('ing'); toast('책 전체(약 47MB)를 받는 중입니다. 다시 누르면 멈춥니다.', 5000);
+      var k = 0, done = 0, fail = 0, full = false;
+      async function work() {
+        while (k < names.length && !stop && !full) {
+          var url = B + names[k++];
+          try { if (!(await c.match(url))) { var r = await fetch(url); if (!r.ok) throw new Error('http'); await c.put(url, r); } done++; }
+          catch (e) { if (e && e.name === 'QuotaExceededError') full = true; else fail++; }
+          b.textContent = Math.floor(done * 100 / names.length) + '%';
+        }
+      }
+      await Promise.all([work(), work(), work()]);
+      busy = false;
+      if (!stop && !full && !fail) { ls.set(DLK, PV); toast('다 받았습니다. 이제 이 기기에서는 인터넷 없이도 PEU를 열 수 있습니다.', 6000); }
+      else toast(full ? '기기 저장 공간이 모자라 멈췄습니다.' : stop ? '멈췄습니다. 받은 쪽은 남아 있어 다음에 이어 받습니다.' : '일부(' + fail + '개)를 받지 못했습니다. 인터넷을 확인하고 다시 누르세요.', 6000);
+      label();
+    };
   }
   async function dec(key, b) { return crypto.subtle.decrypt({name: 'AES-GCM', iv: b.slice(0, 12)}, key, b.slice(12)); }
   async function unwrap(code, which) {
@@ -180,10 +228,11 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
   function shell() {
     app.innerHTML = '<div class="top"><button class="bk" id="bk" aria-label="뒤로">‹</button>' +
       '<a class="pill" href="#/">Practical English Usage</a><form class="sbox" id="sf"><input id="q" type="search" placeholder="Search PEU (번호·제목·본문)" enterkeyhint="search"></form>' +
-      '<button class="tc" id="tc" type="button">목차</button></div>' +
+      '<button class="tc" id="tc" type="button">목차</button><button class="tc dl" id="dlB" type="button" aria-label="책 전체 받아 두기">⬇</button></div>' +
       '<div class="wrap"><main id="main"></main><aside id="side">' + tocHTML() + '</aside></div>' +
       '<div class="drawer" id="dr" hidden><div class="toc-host" style="height:100%">' + tocHTML().replace('<div class="toc">', '<div class="toc"><button class="x" id="dx" type="button">×</button>') + '</div></div>';
     $('bk').onclick = back;
+    dlSetup();
     $('tc').onclick = function () { $('dr').hidden = false; };
     $('dr').onclick = function (e) { if (e.target === $('dr')) $('dr').hidden = true; };
     $('dx').onclick = function () { $('dr').hidden = true; };
