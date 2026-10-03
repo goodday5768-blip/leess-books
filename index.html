@@ -67,6 +67,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 .shelf .ic{font-size:26px}
 .shelf .nm{font-weight:700}
 .shelf .ds{display:block;font-size:13px;color:var(--sub)}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:60;max-width:min(92vw,520px);padding:10px 14px;border-radius:12px;background:#24252b;color:#fff;font-size:14px;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#dlB.ing{font-variant-numeric:tabular-nums;min-width:52px}
 </style>
 </head>
 <body>
@@ -148,7 +150,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
   function reader() {
     app.innerHTML = '<div class="top"><button type="button" id="bk" aria-label="뒤로">‹</button><h1>' + esc(M.short) + '<span class="sub" id="where"></span></h1>' +
       (BI.ans ? '<button type="button" id="ansB" title="문제 번호 누르면 정답">정답</button>' : '') +
-      '<button type="button" id="tocB">목차</button><button type="button" id="seaB" aria-label="검색">🔍</button></div>' +
+      '<button type="button" id="tocB">목차</button><button type="button" id="seaB" aria-label="검색">🔍</button>' +
+      (SCR ? '<button type="button" id="dlB" aria-label="책 전체 받아 두기">⬇</button>' : '') + '</div>' +
       (SCR ? '<div class="stage scroll" id="stg"></div>'   // 연속 스크롤(10-03, Grammar in Use): 쪽을 세로로 잇고 가까운 쪽만 불러온다
            : '<div class="stage"><div class="page" id="pg" style="aspect-ratio:1/' + M.ratio + '"><img id="im" alt=""><div class="ph" id="ph">불러오는 중…</div></div></div>') +
       '<div class="bot"><button type="button" id="pv" aria-label="앞 쪽">◀</button><input type="range" id="rg" min="1" max="' + M.n + '" step="1">' +
@@ -173,6 +176,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     var st;
     $('sf').oninput = function () { clearTimeout(st); var v = this.value; st = setTimeout(function () { search(v); }, 250); };
     if (SCR) scrollSetup();
+    if (SCR) dlSetup();
     if (BI.ans) ansSetup();
     // 넘기기: 쪽 왼쪽·오른쪽 1/3 누르기, 옆으로 밀기, 화살표 키
     var pg = SCR ? document.createElement('div') : $('pg'), sx = 0, sy = 0, t0 = 0;
@@ -254,7 +258,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     }
   }
   function paint(p) {
-    var el = EL[p], small = !!BI.sm && !cache.has(p);   // 원본을 이미 받았으면 원본
+    var el = EL[p], small = !!BI.sm && !cache.has(p) && dlMode() !== 'p';   // 원본을 이미 받았으면(또는 원본으로 책 전체를 받아 뒀으면) 원본
     return img(p, small).then(function (u) {
       if (!SHOWN.has(p)) return;
       el.querySelector('img').src = u; el.dataset.q = small ? 's' : 'f'; el.querySelector('.ph').hidden = true; hot(el, p);
@@ -319,6 +323,53 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
       ANS = d;
       if (SCR) SHOWN.forEach(function (p) { hot(EL[p], p); }); else hot($('pg'), cur);
     }).catch(function () { $('ansB').disabled = true; $('ansB').title = '정답 자료를 불러오지 못했습니다'; });
+  }
+  // ── C안(10-03): 책 전체 받아 두기 — 이 기기에 맞는 쪽(휴대폰 작은 쪽·큰 화면 원본)+정답+검색 본문을 Cache Storage에 ──
+  var DLK = 'book:' + bid + ':dl';
+  function dlMode() { var d = ls.get(DLK); return d && d.v === (BI.v || 0) ? d.m : null; }
+  function toast(msg, ms) {
+    var t = document.querySelector('.toast') || document.body.appendChild(Object.assign(document.createElement('div'), {className: 'toast'}));
+    t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, ms || 4000);
+  }
+  function dlSetup() {
+    var b = $('dlB'), busy = false, stop = false;
+    function label() {
+      var m = dlMode(); b.classList.remove('ing'); b.textContent = m ? '✓' : '⬇';
+      b.title = m ? '이 기기에 책 전체를 받아 두었습니다(' + (m === 's' ? '휴대폰용' : '원본 화질') + ')' : '책 전체 받아 두기 — 수업 전에 와이파이에서 한 번';
+    }
+    label();
+    b.onclick = async function () {
+      if (busy) { stop = true; toast('멈추는 중…'); return; }
+      var c = CS && await CS;
+      if (!c) return toast('이 브라우저는 기기 저장을 지원하지 않습니다.');
+      var m = BI.sm && !needFull() ? 's' : 'p', per = m === 's' ? 0.13 : 0.33;
+      if (dlMode() === m) return toast('이미 받아 두었습니다. 이 기기에서는 내려받지 않고 바로 열립니다.');
+      var names = ['text.bin'].concat(BI.ans ? ['ans.bin'] : []);
+      for (var i = 1; i <= M.n; i++) names.push(m + String(i).padStart(4, '0') + '.bin');
+      try {
+        var est = navigator.storage && navigator.storage.estimate && await navigator.storage.estimate();
+        if (est && est.quota && est.quota - est.usage < M.n * per * 1.2e6) return toast('기기 저장 공간이 모자랍니다(약 ' + Math.round(M.n * per) + 'MB 필요).', 6000);
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+      } catch (e) {}
+      busy = true; stop = false; b.classList.add('ing');
+      toast('책 전체(약 ' + Math.round(M.n * per) + 'MB)를 받는 중입니다. 다시 누르면 멈춥니다.', 5000);
+      var k = 0, done = 0, fail = 0, full = false;
+      async function work() {
+        while (k < names.length && !stop && !full) {
+          var url = 'books/' + bid + '/' + names[k++];
+          try {
+            if (!(await c.match(url))) { var r = await fetch(url); if (!r.ok) throw new Error('http'); await c.put(url, r); }
+            done++;
+          } catch (e) { if (e && e.name === 'QuotaExceededError') full = true; else fail++; }
+          b.textContent = Math.floor(done * 100 / names.length) + '%';
+        }
+      }
+      await Promise.all([work(), work(), work()]);
+      busy = false;
+      if (!stop && !full && !fail) { ls.set(DLK, {v: BI.v || 0, m: m}); toast('다 받았습니다. 이 기기에서는 이 책을 내려받지 않고 바로 엽니다.', 5000); }
+      else toast(full ? '기기 저장 공간이 모자라 멈췄습니다.' : stop ? '멈췄습니다. 받은 쪽은 남아 있어 다음에 이어 받습니다.' : '일부(' + fail + '개)를 받지 못했습니다. 인터넷을 확인하고 다시 누르세요.', 6000);
+      label();
+    };
   }
   function closeAb() { document.querySelectorAll('.ab').forEach(function (x) { x.remove(); }); document.querySelectorAll('.hz.on').forEach(function (x) { x.classList.remove('on'); }); }
   var nk = function (n) { return n.split('.').map(Number); };
