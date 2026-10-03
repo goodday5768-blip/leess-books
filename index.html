@@ -49,6 +49,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 .gate .row{display:flex;gap:8px}
 .gate input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
 .gate .msg{margin-top:8px;min-height:1em;font-size:14px;color:var(--acc)}
+.page{container-type:inline-size}
+/* 번호 누르면 정답(10-03, EGU 5판): 번호 자리에 옅은 동그라미, 누르면 말풍선 */
+.hz{position:absolute;z-index:2;padding:0;border:0;border-radius:999px;background:rgba(194,65,12,.07);box-shadow:inset 0 0 0 1.5px rgba(194,65,12,.5);cursor:pointer}
+.hz.h{border-radius:5px}
+.hz.on{background:rgba(194,65,12,.22)}
+.stage.nohz .hz,.stage.nohz .ab{display:none}
+.ab{position:absolute;z-index:3;max-width:62cqw;max-height:55cqw;overflow:auto;padding:.5em .75em;border-radius:8px;background:#fffbeb;color:#1c1917;border:1.5px solid #c2410c;box-shadow:0 4px 14px rgba(0,0,0,.18);font:max(12px,2.1cqw)/1.4 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;white-space:pre-line;-webkit-user-select:text;user-select:text}
+.ab b{color:#c2410c}
+.ab .nt{display:block;color:#78716c;font-size:.86em}
+.ab table{border-collapse:collapse;white-space:normal}
+.ab td{padding:.12em .3em;vertical-align:top;white-space:pre-line}
+.ab td:first-child{color:#c2410c;font-weight:700;text-align:right;white-space:nowrap}
+.top button.off{background:transparent;color:var(--sub);box-shadow:inset 0 0 0 1px var(--line)}
 .shelf{max-width:780px;margin:0 auto;padding:16px}
 .shelf a{display:flex;gap:12px;align-items:center;margin:0 0 10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);text-decoration:none}
 .shelf .ic{font-size:26px}
@@ -63,11 +76,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽", "scroll": true}, {"id": "egu5-s", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 357쪽(Key 뺌)", "student": true, "scroll": true}, {"id": "giui-s", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "student": true, "scroll": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true}];
+  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true}, {"id": "egu5-s", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 357쪽(Key 뺌)", "student": true, "scroll": true}, {"id": "giui-s", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "student": true, "scroll": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true}];
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
             set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
-  var app = $('app'), key = null, M = null, cur = 1, cache = new Map(), TEXT = null;
+  var app = $('app'), key = null, M = null, cur = 1, cache = new Map(), TEXT = null, ANS = null;
 
   function back() {
     var h = ''; try { h = sessionStorage.getItem('hub:back') || ''; } catch (e) {}
@@ -122,6 +135,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 
   function reader() {
     app.innerHTML = '<div class="top"><button type="button" id="bk" aria-label="뒤로">‹</button><h1>' + esc(M.short) + '<span class="sub" id="where"></span></h1>' +
+      (BI.ans ? '<button type="button" id="ansB" title="문제 번호 누르면 정답">정답</button>' : '') +
       '<button type="button" id="tocB">목차</button><button type="button" id="seaB" aria-label="검색">🔍</button></div>' +
       (SCR ? '<div class="stage scroll" id="stg"></div>'   // 연속 스크롤(10-03, Grammar in Use): 쪽을 세로로 잇고 가까운 쪽만 불러온다
            : '<div class="stage"><div class="page" id="pg" style="aspect-ratio:1/' + M.ratio + '"><img id="im" alt=""><div class="ph" id="ph">불러오는 중…</div></div></div>') +
@@ -147,6 +161,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     var st;
     $('sf').oninput = function () { clearTimeout(st); var v = this.value; st = setTimeout(function () { search(v); }, 250); };
     if (SCR) scrollSetup();
+    if (BI.ans) ansSetup();
     // 넘기기: 쪽 왼쪽·오른쪽 1/3 누르기, 옆으로 밀기, 화살표 키
     var pg = SCR ? document.createElement('div') : $('pg'), sx = 0, sy = 0, t0 = 0;
     pg.addEventListener('touchstart', function (e) { if (e.touches.length !== 1) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; t0 = Date.now(); }, {passive: true});
@@ -202,7 +217,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
   function show(p) {
     if (SHOWN.has(p)) return; SHOWN.add(p);
     var el = EL[p];
-    img(p).then(function (u) { if (!SHOWN.has(p)) return; el.querySelector('img').src = u; el.querySelector('.ph').hidden = true; })
+    img(p).then(function (u) { if (!SHOWN.has(p)) return; el.querySelector('img').src = u; el.querySelector('.ph').hidden = true; hot(el, p); })
       .catch(function () { SHOWN.delete(p); el.querySelector('.ph').textContent = '이 쪽을 불러오지 못했습니다.'; });
   }
   function trim() {   // 메모리: 지금 쪽에서 먼 것부터 30쪽 넘게는 비운다
@@ -240,10 +255,68 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
     try {
       var src = await img(p);
       if (cur !== p) return;
-      $('im').src = src; $('ph').hidden = true;
+      $('im').src = src; $('ph').hidden = true; hot($('pg'), p);
       if (changed) window.scrollTo(0, 0);
     } catch (e) { if (cur === p) $('ph').textContent = '이 쪽을 불러오지 못했습니다.'; }
     [p + 1, p + 2, p - 1].forEach(function (x) { if (x >= 1 && x <= M.n) img(x).catch(function () {}); });
+  }
+  // ── 번호 누르면 정답(10-03): ans.bin = {pages: {쪽: [[x,y,w,h,'h'|'i',연습,번호]]}, ex: {연습: {note, m: {번호: 답}, raw}}} ──
+  function stg() { return document.querySelector('.stage'); }
+  function ansSetup() {
+    var on = ls.get('book:' + bid + ':ans') !== false;
+    stg().classList.toggle('nohz', !on); $('ansB').classList.toggle('off', !on);
+    $('ansB').onclick = function () { on = !on; ls.set('book:' + bid + ':ans', on); stg().classList.toggle('nohz', !on); this.classList.toggle('off', !on); closeAb(); };
+    document.addEventListener('click', function (e) { if (!e.target.closest('.hz,.ab')) closeAb(); });
+    fetchDec('ans.bin').then(gunzipJson).then(function (d) {
+      ANS = d;
+      if (SCR) SHOWN.forEach(function (p) { hot(EL[p], p); }); else hot($('pg'), cur);
+    }).catch(function () { $('ansB').disabled = true; $('ansB').title = '정답 자료를 불러오지 못했습니다'; });
+  }
+  function closeAb() { document.querySelectorAll('.ab').forEach(function (x) { x.remove(); }); document.querySelectorAll('.hz.on').forEach(function (x) { x.classList.remove('on'); }); }
+  var nk = function (n) { return n.split('.').map(Number); };
+  var lt = function (a, b) { a = nk(a); b = nk(b); return a[0] < b[0] || (a[0] === b[0] && (a[1] || 0) < (b[1] || 0)); };
+  function exName(k) { return k === 'SG' ? 'Study guide' : k[0] === 'A' ? 'Additional ' + k.slice(1) : k; }
+  function answerHtml(r) {
+    var E = ANS.ex[r[5]] || {m: {}, note: ''}, m = E.m, nt = E.note ? '<span class="nt">' + esc(E.note) + '</span>' : '';
+    if (r[4] === 'h') {   // 연습 머리: 그 연습 답 전체
+      var ks = Object.keys(m).filter(function (k) { return /^[\d.]+$/.test(k) || !m[k.replace(/[a-d]$/, '')]; });
+      ks.sort(function (a, b) { var x = nk(a.replace(/[a-d]$/, '')), y = nk(b.replace(/[a-d]$/, '')); return (x[0] - y[0]) || ((x[1] || 0) - (y[1] || 0)) || (a < b ? -1 : 1); });
+      if (!ks.length) return '<b>' + esc(exName(r[5])) + '</b>\n' + nt + esc(E.raw || '');
+      return '<b>' + esc(exName(r[5])) + ' 정답</b>' + nt + '<table>' + ks.map(function (k) { return '<tr><td>' + esc(k) + '</td><td>' + esc(m[k]) + '</td></tr>'; }).join('') + '</table>';
+    }
+    var n = r[6], a = m[n];
+    if (a == null && /[a-d]$/.test(n)) a = m[n.slice(0, -1)];
+    if (a != null) return '<b>' + esc(n) + '</b>  ' + nt + esc(a);
+    var nums = Object.keys(m).filter(function (k) { return /^[\d.]+$/.test(k); });
+    var lo = nums.reduce(function (x, y) { return x == null || lt(y, x) ? y : x; }, null);
+    return '<b>' + esc(n) + '</b>  <span class="nt">' + (lo && lt(n, lo) ? '보기(예시) 문항 — 답이 책에 적혀 있습니다.' : '예시 문항 — Key에 따로 없습니다(책에 답이 적혀 있음).') + '</span>';
+  }
+  function hot(el, p) {
+    if (!ANS || !el) return;
+    el.querySelectorAll('.hz,.ab').forEach(function (x) { x.remove(); });
+    (ANS.pages[p] || []).forEach(function (r) {
+      var b = document.createElement('button'), h = r[4] === 'h';
+      b.type = 'button'; b.className = 'hz' + (h ? ' h' : '');
+      b.setAttribute('aria-label', h ? exName(r[5]) + ' 정답 전체' : exName(r[5]) + ' ' + r[6] + '번 정답');
+      var cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2, w = Math.max(r[2] + .012, .034), hh = Math.max(r[3] + .006, .019);
+      b.style.cssText = 'left:' + (cx - w / 2) * 100 + '%;top:' + (cy - hh / 2) * 100 + '%;width:' + w * 100 + '%;height:' + hh * 100 + '%';
+      b.onclick = function (e) {
+        e.stopPropagation();
+        var was = b.classList.contains('on'); closeAb(); if (was) return;
+        b.classList.add('on');
+        var d = document.createElement('div'); d.className = 'ab'; d.innerHTML = answerHtml(r);
+        d.onclick = function (e) { e.stopPropagation(); };
+        var right = cx > .58;
+        d.style.top = ((h ? r[1] + r[3] : r[1]) * 100 + (h ? .6 : -.4)) + '%';
+        if (h) d.style.left = r[0] * 100 + '%';
+        else if (right) d.style.right = (1 - (cx - w / 2) + .004) * 100 + '%';
+        else d.style.left = (cx + w / 2 + .006) * 100 + '%';
+        el.appendChild(d);
+        var pr = el.getBoundingClientRect(), dr = d.getBoundingClientRect();   // 쪽 아래로 넘치면 위로 올린다
+        if (dr.bottom > pr.bottom - 4) d.style.top = Math.max(0, (pr.bottom - 4 - dr.height - pr.top) / pr.height * 100) + '%';
+      };
+      el.appendChild(b);
+    });
   }
   function openToc() { $('toc').hidden = false; $('tf').value = ''; drawToc(); var c = document.querySelector('#tl .cur'); if (c) c.scrollIntoView({block: 'center'}); }
   function drawToc() {
