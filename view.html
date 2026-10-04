@@ -78,7 +78,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1790994581, "sm": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1790994600, "sm": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791002921, "sm": true}, {"id": "xi", "short": "자이스토리 어법·어휘", "title": "자이스토리 영어 어법·어휘 기본", "desc": "21단원 + 모의고사 8회 · 224쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791042050, "sm": true}];
+  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1790994581, "av": 1790997240, "sm": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1790994600, "sm": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791002921, "av": 1791002921, "sm": true}, {"id": "xi", "short": "자이스토리 어법·어휘", "title": "자이스토리 영어 어법·어휘 기본", "desc": "21단원 + 모의고사 8회 · 224쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791042050, "av": 1791074997, "sm": true}];
   try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}   // 오프라인(10-03)
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
@@ -110,7 +110,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
   try { if (window.caches) { CS = caches.open(CN).catch(function () { return null; });
     caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('lb:' + bid + ':') === 0 && k !== CN) caches.delete(k); }); }).catch(function () {}); } } catch (e) { CS = null; }
   async function getBin(name) {
-    var url = 'books/' + bid + '/' + name, c = CS && await CS, r = null;
+    var url = 'books/' + bid + '/' + name + (name === 'ans.bin' && BI.av ? '?av=' + BI.av : ''), c = CS && await CS, r = null;   // 정답판 번호(10-04): 정답만 고쳐도 기기 저장본이 새로 받게
     if (c) try { r = await c.match(url); } catch (e) { r = null; }
     if (!r) {
       r = await fetch(url);
@@ -357,7 +357,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
       var k = 0, done = 0, fail = 0, full = false;
       async function work() {
         while (k < names.length && !stop && !full) {
-          var url = 'books/' + bid + '/' + names[k++];
+          var nm = names[k++], url = 'books/' + bid + '/' + nm + (nm === 'ans.bin' && BI.av ? '?av=' + BI.av : '');
           try {
             if (!(await c.match(url))) { var r = await fetch(url); if (!r.ok) throw new Error('http'); await c.put(url, r); }
             done++;
@@ -414,6 +414,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
         el.appendChild(d);
         var pr = el.getBoundingClientRect(), dr = d.getBoundingClientRect();   // 쪽 아래로 넘치면 위로 올린다
         if (dr.bottom > pr.bottom - 4) d.style.top = Math.max(0, (pr.bottom - 4 - dr.height - pr.top) / pr.height * 100) + '%';
+        try {   // 긴 해설(10-04): 위·아래 막대 사이에 들어오게 높이를 줄이고, 아래 막대에 가리면 그만큼 내린다
+          var bt = ($('bot') || document.querySelector('.bot') || {getBoundingClientRect: function () { return {top: innerHeight}; }}).getBoundingClientRect().top,
+              tp = (document.querySelector('.top') || {getBoundingClientRect: function () { return {bottom: 0}; }}).getBoundingClientRect().bottom;
+          d.style.maxHeight = Math.max(120, Math.min(parseFloat(getComputedStyle(d).maxHeight) || 1e4, bt - tp - 16)) + 'px';
+          pr = el.getBoundingClientRect(); dr = d.getBoundingClientRect();
+          if (dr.bottom > pr.bottom - 4) d.style.top = Math.max(0, (pr.bottom - 4 - dr.height - pr.top) / pr.height * 100) + '%';
+          var db = d.getBoundingClientRect(), dy = db.bottom > bt - 8 ? db.bottom - (bt - 8) : (db.top < tp + 8 ? db.top - (tp + 8) : 0);
+          if (dy) { var sc = el.parentElement; while (sc && !(sc.scrollHeight > sc.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement; (sc || window).scrollBy({top: dy, behavior: 'smooth'}); }
+        } catch (e) {}
       };
       el.appendChild(b);
     });
