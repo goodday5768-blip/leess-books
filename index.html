@@ -78,7 +78,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1790994581, "av": 1790997240, "sm": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1790994600, "sm": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791002921, "av": 1791002921, "sm": true}, {"id": "xi", "short": "자이스토리 어법·어휘", "title": "자이스토리 영어 어법·어휘 기본", "desc": "21단원 + 모의고사 8회 · 224쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1791042050, "av": 1791074997, "sm": true}];
+  var BOOKS = [{"id": "egu5", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792169120, "av": 1790997240, "sm": true}, {"id": "giui", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1792169136, "sm": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792169148, "av": 1791002921, "sm": true}, {"id": "xi", "short": "자이스토리 어법·어휘", "title": "자이스토리 영어 어법·어휘 기본", "desc": "21단원 + 모의고사 8회 · 224쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792169166, "av": 1791074997, "sm": true}];
   try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}   // 오프라인(10-03)
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
@@ -238,7 +238,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
   var Q = new Set(), UP = new Set(), RUN = 0, MAXC = 2;
   function needFull() {   // 작은 쪽(1200px)으로 모자랄 때: 큰 화면(태블릿·PC) 또는 손가락 확대
     var el = EL[cur], w = (el ? el.clientWidth : innerWidth) * (window.devicePixelRatio || 1);
-    return w > 1320 || !!(window.visualViewport && visualViewport.scale > 1.05);
+    return w > 1700 ||   /* 10-17 작은 쪽 1600px */ !!(window.visualViewport && visualViewport.scale > 1.05);
   }
   function upNear() {   // 지금 쪽과 앞뒤 쪽 중 작은 쪽으로 보이는 것을 원본으로
     if (!BI.sm) return;
@@ -343,7 +343,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
       if (busy) { stop = true; toast('멈추는 중…'); return; }
       var c = CS && await CS;
       if (!c) return toast('이 브라우저는 기기 저장을 지원하지 않습니다.');
-      var m = BI.sm && !needFull() ? 's' : 'p', per = m === 's' ? 0.13 : 0.33;
+      var m = BI.sm && !needFull() ? 's' : 'p', per = m === 's' ? 0.2 : 0.4;
       if (dlMode() === m) return toast('이미 받아 두었습니다. 이 기기에서는 인터넷 없이도 열립니다.');
       var names = ['text.bin'].concat(BI.ans ? ['ans.bin'] : []);
       for (var i = 1; i <= M.n; i++) names.push(m + String(i).padStart(4, '0') + '.bin');
