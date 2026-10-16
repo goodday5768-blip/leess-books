@@ -91,7 +91,7 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
   var B = 'books/peuol/', app = $('app'), K = null, M = null, TEXT = null, cache = new Map();
   try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}   // 오프라인(10-03)
   // 기기 저장(10-03): 받은 파일(암호화된 그대로)을 Cache Storage 'lb:peuol:<판>'에 — 판(PV)은 site_books.py가 meta.bin 시각으로 넣는다
-  var PV = 1790989816, CN = 'lb:peuol:' + PV, CS = null;
+  var PV = 1792168436, CN = 'lb:peuol:' + PV, CS = null;
   try { if (window.caches) { CS = caches.open(CN).catch(function () { return null; });
     caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('lb:peuol:') === 0 && k !== CN) caches.delete(k); }); }).catch(function () {}); } } catch (e) { CS = null; }
 
