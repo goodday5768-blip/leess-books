@@ -81,7 +81,7 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
 <body>
 <div id="app"></div>
 <script>
-/* PEU 온라인판 뷰어(2026-10-03) — 옥스퍼드 PEU 화면 저장 PDF(1~28장)를 본문 단만 잘라 암호화(peuol.py).
+/* PEU 온라인판 뷰어(2026-10-03) — 옥스퍼드 PEU 화면 저장 PDF(1~28장)를 본문 단만 잘라 암호화(peuol.py). 11-05 29~31장은 4판 책 스캔(peubook.py).
    내용 열쇠는 선생님 코드(leess:tcode) 또는 학생 코드(leess:scode)로 푼다. 주소: #/ · #/s/3 · #/e/30 · #/e/30.2 · #/q/검색어 */
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -91,7 +91,7 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
   var B = 'books/peuol/', app = $('app'), K = null, M = null, TEXT = null, cache = new Map();
   try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}   // 오프라인(10-03)
   // 기기 저장(10-03): 받은 파일(암호화된 그대로)을 Cache Storage 'lb:peuol:<판>'에 — 판(PV)은 site_books.py가 meta.bin 시각으로 넣는다
-  var PV = 1793872297, CN = 'lb:peuol:' + PV, CS = null;
+  var PV = 1793878248, CN = 'lb:peuol:' + PV, CS = null;
   try { if (window.caches) { CS = caches.open(CN).catch(function () { return null; });
     caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('lb:peuol:') === 0 && k !== CN) caches.delete(k); }); }).catch(function () {}); } } catch (e) { CS = null; }
 
@@ -264,7 +264,7 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
         return '<div class="sec"><button type="button"><b>+</b><span class="no">' + s.n + '</span><span>' + esc(s.title) + '</span></button><ol hidden>' +
           '<li><a href="#/s/' + s.n + '"><span></span>Introduction</a></li>' +
           s.entries.map(function (e) { return '<li><a href="#/e/' + e.n + '"><span>' + e.n + '</span>' + esc(e.t) + '</a></li>'; }).join('') + '</ol></div>';
-      }).join('') + '<p class="note">본문은 소장 중인 PEU 화면 저장본(1~28장)입니다. 29장 이후(Vocabulary Areas 등)로 가는 참조는 자료에 없어 눌리지 않습니다.</p></div>';
+      }).join('') + '<p class="note">1~28장은 PEU 화면 저장본, 29~31장(항목 321–635)은 4판 책 스캔입니다.</p></div>';
     var secs = $('main').querySelectorAll('.sec');
     secs.forEach(function (d) { d.querySelector('button').onclick = function () { var ol = d.querySelector('ol'); ol.hidden = !ol.hidden; d.querySelector('b').textContent = ol.hidden ? '+' : '−'; }; });
     $('ex').onclick = function (e) {
