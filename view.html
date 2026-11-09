@@ -525,7 +525,7 @@ body.bn-pen img{-webkit-user-drag:none}
   let cards = new Map(), cand = new Map(), mode = 'pen', pc = 0, hc = 0, undo = [], act = null, eat = false, timer = 0, stimer = 0, blockClick = 0, synth = false, penSeen = false;
   const penOn = v => document.body.classList.toggle('bn-pen', v);   // 펜으로 긋는 동안만 글자 선택을 막는다
   try { penSeen = localStorage.getItem('bnPen') === '1'; } catch (e) {}
-  const setSt = t => { const e = document.getElementById('bnSt'); if (e && e.textContent !== (t || HINT)) e.textContent = t || HINT; };
+  const setSt = t => { const e = document.getElementById('bnSt'); const v = (t || HINT) + dgText(); if (e && e.textContent !== v) e.textContent = v; };
   async function flush() {
     clearTimeout(timer); timer = 0; const list = [...dirty]; dirty.clear();
     try { for (const q of list) { await tx('readwrite', s => q.s.length ? s.put(q) : s.delete(q.id)); } if (list.length) setSt('저장됨'); }
@@ -666,51 +666,122 @@ body.bn-pen img{-webkit-user-drag:none}
     }
     if (hit) { draw(c); save(c.q); } return hit;
   }
-  function discard() { if (act && act.path) act.path.remove(); act = null; penOn(false); }
-  function addPoint(e) {
-    const a = act, [x, y] = xy(a.c, e), X = Math.round(x * 2), Y = Math.round(y * 2);
-    a.dist = Math.max(a.dist, Math.hypot(e.clientX - a.cx, e.clientY - a.cy));
-    if (a.erase) { if (eraseAt(a.c, x, y)) a.hit = true; return; }
+  /* 한 획의 흐름: 펜 down → move(초당 240번까지 묶여 오는 점) → up.
+     · 끊김 방지: 아이패드가 펜 이벤트를 도중에 취소해도(pointercancel) 획을 버리지 않고 같은 펜의 touch 이벤트로 이어 받는다. 그것도 끊기면 그은 데까지 저장한다.
+       끝 신호(up)를 놓친 획은 다음 획이 시작될 때 저장한다(예전에는 이후 필기가 통째로 안 됐다).
+     · 고른 선: 손떨림을 살짝 누르고(SMOOTH) 점 사이를 곡선으로 잇는다.
+     · 직선: 형광펜은 거의 곧게 그으면 자동으로 편다. 펜은 끝에서 떼지 않고 잠깐 멈추면 직선이 되고, 그대로 움직여 끝점을 고친다(가로·세로 근처는 딱 맞춤). */
+  const SMOOTH = .65, HOLD_MS = 450, SNAP = 4, dg = {d: 0, u: 0, c: 0, t: 0, s: 0};
+  let dbg = false, dbgTap = []; try { dbg = localStorage.getItem('ntDebug') === '1'; } catch (e) {}
+  const dgText = () => dbg ? ` · 펜 ${dg.d}/${dg.u} 취소 ${dg.c} 이어받음 ${dg.t} 직선 ${dg.s}` : '';
+  document.addEventListener('click', e => {   // 상태 글자를 3초 안에 다섯 번 누르면 진단 숫자를 켜고 끈다
+    if (e.target.id !== 'bnSt') return; const n = Date.now(); dbgTap = dbgTap.filter(t => n - t < 3000); dbgTap.push(n);
+    if (dbgTap.length >= 5) { dbgTap = []; dbg = !dbg; try { localStorage.setItem('ntDebug', dbg ? '1' : '0'); } catch (x) {} setSt(''); }
+  }, true);
+  function discard() { if (act) { clearTimeout(act.hold); if (act.path) act.path.remove(); } act = null; penOn(false); }
+  function pts(p) { const o = [[p[0], p[1]]]; for (let i = 2; i + 1 < p.length; i += 2) { const l = o[o.length - 1]; o.push([l[0] + p[i], l[1] + p[i + 1]]); } return o; }
+  function straight(p, tol, frac, min) {   // 거의 직선이면 끝점 [x, y](반 픽셀 단위), 아니면 null
+    const o = pts(p), a = o[0], b = o[o.length - 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 2 * min) return null;
+    let dev = 0; for (const q of o) dev = Math.max(dev, Math.abs((b[0] - a[0]) * (a[1] - q[1]) - (a[0] - q[0]) * (b[1] - a[1])) / L);
+    return dev <= Math.max(2 * tol, frac * L) ? b : null;
+  }
+  function toLine(a, X, Y) {   // 획을 시작점 → (X, Y) 직선으로 바꾼다
+    const p = a.st.p, x0 = p[0], y0 = p[1]; let dx = X - x0, dy = Y - y0; const ang = Math.abs(Math.atan2(dy, dx)) * 180 / Math.PI;
+    if (ang < SNAP || ang > 180 - SNAP) dy = 0; else if (Math.abs(ang - 90) < SNAP) dx = 0;
+    a.st.p = [x0, y0, dx, dy]; a.lx = x0 + dx; a.ly = y0 + dy; a.path.setAttribute('d', dOf(a.st.p));
+  }
+  function put(a, x, y) {   // 카드 좌표 한 점을 획에 잇는다
+    const X = Math.round(x * 2), Y = Math.round(y * 2);
+    if (a.line) return toLine(a, X, Y);
     const dx = X - a.lx, dy = Y - a.ly; if (dx * dx + dy * dy < 4) return;
     const px = a.lx / 2, py = a.ly / 2, nx = X / 2, ny = Y / 2;
     a.st.p.push(dx, dy); a.lx = X; a.ly = Y; a.body += `Q${px} ${py} ${(px + nx) / 2} ${(py + ny) / 2}`; a.path.setAttribute('d', a.body + `L${nx} ${ny}`);
   }
-  function passTap(x, y) { const t = document.elementFromPoint(x, y); if (!t) return; synth = true; try { t.click(); } finally { synth = false; } }
-  function cardAt(t) { for (let n = t; n && n !== document.body; n = n.parentElement) if (cand.has(n)) return n; return null; }
+  function addPoint(e) {
+    const a = act; a.last = Date.now(); a.rx = e.clientX; a.ry = e.clientY;
+    a.dist = Math.max(a.dist, Math.hypot(e.clientX - a.cx, e.clientY - a.cy));
+    if (a.erase) { const [x, y] = xy(a.c, e); if (eraseAt(a.c, x, y)) a.hit = true; return; }
+    if (a.line) { const [x, y] = xy(a.c, e); return put(a, x, y); }
+    if (!a.hold || Math.hypot(e.clientX - a.hx, e.clientY - a.hy) > 4) {   // 4px 넘게 움직일 때마다 「멈춤」 시계를 다시 건다
+      clearTimeout(a.hold); a.hx = e.clientX; a.hy = e.clientY;
+      a.hold = setTimeout(() => { if (act !== a || a.line) return; const b = straight(a.st.p, 6, .06, 40); if (b) { a.line = true; toLine(a, b[0], b[1]); dg.s++; } }, HOLD_MS);
+    }
+    a.sx += (e.clientX - a.sx) * SMOOTH; a.sy += (e.clientY - a.sy) * SMOOTH;
+    const [x, y] = xy(a.c, {clientX: a.sx, clientY: a.sy}); put(a, x, y);
+  }
+  function passTap(cx, cy) {   // 짧게 누르면 필기 대신 아래 단추·보기를 누른다
+    const t = document.elementFromPoint(cx, cy); if (!t) return; synth = true; try { t.click(); } finally { synth = false; }
+  }
+  function endStroke(cx, cy, cut) {   // cut = 정상적인 up이 아니라 취소·놓침으로 끝남
+    const a = act; if (!a) return; clearTimeout(a.hold); penOn(false);
+    const tap = !cut && a.dist < TAP_PX && Date.now() - a.t < TAP_MS; blockClick = Date.now() + 400;
+    if (a.erase) { act = null; if (tap && !a.hit) passTap(cx, cy); setSt(''); return; }
+    if (tap) { discard(); passTap(cx, cy); return; }
+    if (cut && a.dist < TAP_PX) { discard(); setSt(''); return; }
+    if (!a.line) {
+      const [x, y] = xy(a.c, {clientX: a.rx, clientY: a.ry}); put(a, x, y);   // 마지막은 펜을 뗀 그 자리까지
+      if (a.st.h) { const b = straight(a.st.p, 5, .05, 12); if (b) { toLine(a, b[0], b[1]); dg.s++; } }
+    }
+    act = null; const c = a.c;
+    if (!c.q.w) c.q.w = c.kind === 'img' ? (c.W || c.el.clientWidth) : c.el.offsetWidth;
+    c.q.s.push(a.st); undo.push({t: 'add', c, st: a.st}); paint(c); save(c.q);
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  }
   document.addEventListener('pointerdown', e => {
-    if (e.pointerType !== 'pen' || act) return;                        // 필기는 펜슬만 — 손가락·마우스는 화면 넘기기·단어 선택 그대로
+    if (e.pointerType !== 'pen') return;                        // 필기는 펜슬만 — 손가락·마우스는 화면 넘기기·단어 선택 그대로
+    if (act) endStroke(act.rx, act.ry, true);                          // 펜은 하나다: 새 획이 시작됐으면 앞 획은 끝난 것
     if (!penSeen) { penSeen = true; try { localStorage.setItem('bnPen', '1'); } catch (x1) {} schedule(); }
     if (!e.target.closest || e.target.closest('input,textarea,select,audio,video,button,a,[contenteditable],#bnBar')) return;
     cand = candidates(); const el = cardAt(e.target); if (!el) return;
     let c = cards.get(el); if (c && c.svg.parentNode !== el) { unmount(c); c = null; }
     if (!c) { const kind = cand.get(el), v = ident(el, kind); c = mount(el, kind, recs.get(v.id) || blank(v.id, kind), v); }
-    const [x, y] = xy(c, e), X = Math.round(x * 2), Y = Math.round(y * 2), erase = mode === 'erase';
-    act = {id: e.pointerId, c, cx: e.clientX, cy: e.clientY, t: Date.now(), dist: 0, erase, hit: false, lx: X, ly: Y}; eat = true;
+    const [x, y] = xy(c, e), X = Math.round(x * 2), Y = Math.round(y * 2), erase = mode === 'erase'; dg.d++;
+    act = {id: e.pointerId, c, cx: e.clientX, cy: e.clientY, rx: e.clientX, ry: e.clientY, sx: e.clientX, sy: e.clientY, t: Date.now(), last: Date.now(), dist: 0, erase, hit: false, lx: X, ly: Y, tid: null, viaTouch: false, line: false, hold: 0}; eat = true;
     if (erase) { if (eraseAt(c, x, y)) act.hit = true; }
-    else { const [a, ay] = anchor(c, y), hl = mode === 'hl'; act.st = {c: hl ? hc : pc, a, ay: Math.round(ay), p: [X, Y]}; if (hl) act.st.h = 1; act.body = `M${X / 2} ${Y / 2}`; act.path = pathEl(act.st); c.svg.appendChild(act.path); }
+    else {
+      const [a, ay] = anchor(c, y), hl = mode === 'hl'; act.st = {c: hl ? hc : pc, a, ay: Math.round(ay), p: [X, Y]}; if (hl) act.st.h = 1;
+      act.body = `M${X / 2} ${Y / 2}`; act.path = pathEl(act.st); c.svg.appendChild(act.path);
+    }
     penOn(true); const sel = getSelection(); if (sel && !sel.isCollapsed) sel.removeAllRanges();
     try { el.setPointerCapture(e.pointerId); } catch (x2) {}
     e.preventDefault(); e.stopPropagation();
   }, true);
-  document.addEventListener('pointermove', e => { if (!act || e.pointerId !== act.id) return; const ev = e.getCoalescedEvents ? e.getCoalescedEvents() : []; (ev.length ? ev : [e]).forEach(addPoint); e.stopPropagation(); }, true);
-  document.addEventListener('pointerup', e => {
-    if (!act || e.pointerId !== act.id) return; e.stopPropagation();
-    const a = act, tap = a.dist < TAP_PX && Date.now() - a.t < TAP_MS; penOn(false); blockClick = Date.now() + 400;
-    if (a.erase) { act = null; if (tap && !a.hit) passTap(e.clientX, e.clientY); return; }
-    if (tap) { discard(); passTap(e.clientX, e.clientY); return; }
-    act = null; const c = a.c; if (!c.q.w) c.q.w = c.kind === 'img' ? (c.W || c.el.clientWidth) : c.el.offsetWidth;
-    c.q.s.push(a.st); undo.push({t: 'add', c, st: a.st}); paint(c); save(c.q);
-    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  document.addEventListener('pointermove', e => {
+    if (!act || act.viaTouch || e.pointerId !== act.id) return;
+    const ev = e.getCoalescedEvents ? e.getCoalescedEvents() : []; (ev.length ? ev : [e]).forEach(addPoint); e.stopPropagation();
   }, true);
-  document.addEventListener('pointercancel', e => { if (act && e.pointerId === act.id) { discard(); e.stopPropagation(); } }, true);
+  document.addEventListener('pointerup', e => { if (!act || e.pointerId !== act.id) return; e.stopPropagation(); dg.u++; endStroke(e.clientX, e.clientY, false); }, true);
+  document.addEventListener('pointercancel', e => {
+    if (!act || e.pointerId !== act.id) return; e.stopPropagation(); dg.c++;
+    if (act.viaTouch) return;
+    if (act.tid !== null) { act.viaTouch = true; dg.t++; } else endStroke(act.rx, act.ry, true);
+  }, true);
+  function cardAt(t) { for (let n = t; n && n !== document.body; n = n.parentElement) if (cand.has(n)) return n; return null; }
   document.addEventListener('click', e => { if (!synth && Date.now() < blockClick && !(e.target.closest && e.target.closest('#bnBar'))) { e.preventDefault(); e.stopPropagation(); } }, true);
   document.addEventListener('dragstart', e => { if (act) e.preventDefault(); }, true);
-  // 손가락은 브라우저와 화면 코드가 그대로 처리한다(넘기기·확대·길게 눌러 단어 선택 → 찾아보기). 막는 것은 펜으로 긋는 동안의 넘김·손바닥·화면의 밀기 동작뿐.
-  const hold = e => { if (act) { e.preventDefault(); e.stopPropagation(); } };
-  document.addEventListener('touchstart', hold, {passive: false, capture: true});
-  document.addEventListener('touchmove', hold, {passive: false, capture: true});
-  const rel = e => { if (eat) { e.stopPropagation(); if (!e.touches.length) eat = false; } };
-  document.addEventListener('touchend', rel, true); document.addEventListener('touchcancel', rel, true);
+  // 손가락은 브라우저와 화면 코드가 그대로 처리한다(넘기기·확대·길게 눌러 단어 선택 → 찾아보기). 막는 것은 펜으로 긋는 동안의 넘김·손바닥뿐.
+  const touchOf = (e, id) => { for (const t of e.changedTouches) if (t.identifier === id) return t; return null; };
+  document.addEventListener('touchstart', e => {
+    if (!act) return;
+    if (act.tid === null) {   // 방금 닿은 펜의 touch를 기억해 둔다(아이패드는 touchType이 stylus, 그 밖은 펜 자리에서 가장 가까운 것)
+      let best = null, bd = 40; for (const t of e.changedTouches) { const d = t.touchType === 'stylus' ? 0 : Math.hypot(t.clientX - act.cx, t.clientY - act.cy); if (d < bd) { bd = d; best = t; } }
+      if (best) act.tid = best.identifier;
+    }
+    e.preventDefault(); e.stopPropagation();
+  }, {passive: false, capture: true});
+  document.addEventListener('touchmove', e => {
+    if (!act) return;
+    if (act.viaTouch) { const t = touchOf(e, act.tid); if (t) addPoint(t); }
+    e.preventDefault(); e.stopPropagation();
+  }, {passive: false, capture: true});
+  const touchEnd = e => {
+    if (act && act.tid !== null) {
+      const t = touchOf(e, act.tid), a = act, cut = e.type === 'touchcancel';
+      if (t) { if (a.viaTouch) endStroke(t.clientX, t.clientY, cut); else setTimeout(() => { if (act === a) endStroke(t.clientX, t.clientY, cut); }, 60); }   // up을 놓쳤을 때를 대비
+    }
+    if (eat) { e.stopPropagation(); if (!e.touches.length) eat = false; }
+  };
+  document.addEventListener('touchend', touchEnd, true); document.addEventListener('touchcancel', touchEnd, true);
 
   /* ── 도구 막대 ── */
   function place(b) {   // 화면 아래에 붙어 있는 단추 줄(교재의 쪽 넘김 등)이 있으면 그 위로 올린다
