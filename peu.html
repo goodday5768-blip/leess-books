@@ -345,5 +345,274 @@ aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
   boot();
 })();
 </script>
+<script id="bookNoteJs">/* 범용 필기층(2026-11-09) — 시험앱 전용 필기(note.js)를 끼울 수 없는 모든 화면에 붙는다: 교재·지문분석(article), EBS·수업관리 시험(#qs), 워크북(#stepBox·#exs),
+   교사용 교재(.page 쪽 그림), 최종정리(#root). 화면 코드는 고치지 않고 body 변화를 보고 스스로 붙는다. 저장은 기기 IndexedDB(note.js와 같은 DB), 내용은 저장하지 않고 획만.
+   필기는 펜슬만(손가락·마우스는 넘기기·단어 선택 그대로). 글 카드는 내용 해시로, 쪽 그림은 쪽 번호로, 교재 지문은 id로 찾는다. 휴대폰(640 이하)과 넓은 화면은 글 배치가 달라 따로 저장. */
+(() => {
+  if (window.BOOKNOTE || document.getElementById('noteJs')) return;   // 시험앱 전용 필기가 있으면 그쪽이 맡는다
+  const DBN = 'exnote', ST = 'rounds', COL = ['#e53935', '#1e66f5'], HCOL = ['#ffd60a', '#4cd964', '#ff7ab8'], HINT = '필기는 펜슬로만', ERASE_R = 12, TAP_PX = 6, TAP_MS = 300, MAX_SCALE = 1.5, OLD = 200 * 864e5;
+  const $ = s => document.querySelector(s);
+  let salt0 = ''; try { if (typeof D !== 'undefined' && D && D.salt) salt0 = String(D.salt); } catch (e) {}
+  const QS = new URLSearchParams(location.search), BOOK = QS.get('b') || '';
+  const SALT = 'book:' + (salt0 || location.pathname.replace(/[^/]*$/, '')), PAGE = (location.pathname.split('/').pop() || 'guide').replace(/\.html$/, ''), NARROW = matchMedia('(max-width:640px)');
+  const css = document.createElement('style');
+  css.textContent = `.bn-rel{position:relative}
+.bn-l{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:1}
+.bn-l path{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:2.2}
+.bn-l path.hl{stroke-width:16;stroke-opacity:.38}
+#bnBar{position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:60;display:flex;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 20px);box-sizing:border-box;gap:5px;align-items:center;padding:5px;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.14);border-radius:14px;box-shadow:0 3px 14px rgba(0,0,0,.2);color:#222;font-size:14px}
+#bnBar[hidden]{display:none}
+#bnBar button{min-height:38px;width:auto;margin:0;padding:8px 10px;border:1px solid rgba(0,0,0,.16);border-radius:9px;background:#fff;color:#222;font:inherit;line-height:1}
+#bnBar button.on{outline:2px solid #1e66f5;outline-offset:-2px;font-weight:700}
+#bnBar .bn-dot{width:38px;padding:0;display:flex;align-items:center;justify-content:center}
+#bnBar .bn-dot i{display:block;width:18px;height:18px;border-radius:50%}
+#bnBar .bn-dot[hidden]{display:none}
+#bnSt{font-size:11px;color:#777;min-width:0;white-space:nowrap}
+body.bn-pen{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+body.bn-pen img{-webkit-user-drag:none}
+@media print{#bnBar{display:none}}`;
+  document.head.appendChild(css);
+
+  /* ── 저장소 ── */
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((ok, no) => {
+    const r = indexedDB.open(DBN, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(ST, {keyPath: 'id'}).createIndex('salt', 'salt');
+    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+  }));
+  async function tx(mode, f) { const d = await open(); return new Promise((ok, no) => { const t = d.transaction(ST, mode), rq = f(t.objectStore(ST)); let out; if (rq) rq.onsuccess = () => { out = rq.result; }; t.oncomplete = () => ok(out); t.onerror = t.onabort = () => no(t.error); }); }
+  const recs = new Map(), dirty = new Set();
+  async function load() {
+    try {
+      const all = await tx('readonly', s => s.index('salt').getAll(SALT)), now = Date.now(), old = [];
+      all.forEach(r => { if (r.at && now - r.at > OLD) old.push(r.id); else recs.set(r.id, r); });
+      if (old.length) tx('readwrite', s => { old.forEach(id => s.delete(id)); }).catch(() => {});   // 200일 넘게 손대지 않은 필기는 치운다
+    } catch (e) {}
+  }
+
+  let cards = new Map(), cand = new Map(), mode = 'pen', pc = 0, hc = 0, undo = [], act = null, eat = false, timer = 0, stimer = 0, blockClick = 0, synth = false, penSeen = false;
+  const penOn = v => document.body.classList.toggle('bn-pen', v);   // 펜으로 긋는 동안만 글자 선택을 막는다
+  try { penSeen = localStorage.getItem('bnPen') === '1'; } catch (e) {}
+  const setSt = t => { const e = document.getElementById('bnSt'); if (e && e.textContent !== (t || HINT)) e.textContent = t || HINT; };
+  async function flush() {
+    clearTimeout(timer); timer = 0; const list = [...dirty]; dirty.clear();
+    try { for (const q of list) { await tx('readwrite', s => q.s.length ? s.put(q) : s.delete(q.id)); } if (list.length) setSt('저장됨'); }
+    catch (e) { setSt('저장 실패'); }
+  }
+  function save(q) { dirty.add(q); q.at = Date.now(); if (q.s.length) recs.set(q.id, q); else recs.delete(q.id); setSt('저장 중…'); clearTimeout(timer); timer = setTimeout(flush, 400); }
+  addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
+
+  /* ── 어디에 붙나 ── */
+  const SKIP = '.top,.bot,.panel,nav,header,footer,script,style,svg,[hidden]';
+  function candidates() {
+    const out = new Map(), add = (els, kind) => { for (const el of els) if (el.nodeType === 1 && !out.has(el)) out.set(el, kind); };
+    const qs = $('#qs'); if (qs) add(qs.children, 'text');
+    const exs = $('#exs'); if (exs) add(exs.children, 'text');
+    const sb = $('#stepBox'); if (sb && [...sb.children].some(x => !x.classList.contains('bn-l'))) add([sb], 'text');
+    const app = $('#app');
+    if (app) {
+      const arts = app.querySelectorAll('main > article');
+      if (arts.length) add(arts, 'book');
+      else { const pg = app.querySelectorAll('.page'); if (pg.length) add(pg, 'img'); else add([...app.children].filter(x => !x.matches(SKIP)), 'text'); }
+    }
+    const root = $('#root'); if (root) add([...root.children].filter(x => !x.matches(SKIP)), 'text');
+    return out;
+  }
+  const vis = el => el.getClientRects().length > 0;
+  function norm(el) {   // 카드의 내용 지문(指紋): 그림·음원 파일 이름 + 글자(빈칸에 쓴 답은 들어가지 않는다)
+    let t = ''; el.querySelectorAll('[data-enc],img[src]').forEach(i => { const k = i.dataset.enc || i.getAttribute('src') || ''; if (k && !/^(blob|data):/.test(k)) t += k + '|'; });
+    return t + (el.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  function hash(s) { let a = 2166136261, b = 5381; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = (Math.imul(b, 33) + c) | 0; } return (a >>> 0).toString(36) + (b >>> 0).toString(36); }
+  const sigs = new WeakMap();
+  function ident(el, kind) {   // {id, …} — 글 카드는 내용이 그대로면 다시 계산하지 않는다
+    if (kind === 'book') return {id: `${SALT}:${PAGE}:${(location.hash.match(/^#g(\d+)/) || [])[1]}:${el.id}:${NARROW.matches ? 'm' : 'w'}`};
+    if (kind === 'img') return {id: `${SALT}:${PAGE}:${BOOK}:p${el.dataset.p || new URLSearchParams(location.search).get('p') || 1}`};
+    const sig = (el.textContent || '').length + '/' + el.querySelectorAll('[data-enc],img[src]').length, old = sigs.get(el);
+    if (old && old.sig === sig) return old;
+    // head = 첫머리(「3. 주제」처럼 번호+유형 두 글자, 번호가 없으면 24자), probes = 본문 가운데 두 토막. 채점으로 해설·정오 표시가 덧붙어도 토막은 남는다 → 같은 카드로 본다
+    const n = norm(el), L = n.length, v = {sig, n, id: `${SALT}:${PAGE}:t:${hash(n)}:${NARROW.matches ? 'm' : 'w'}`, head: (n.match(/^\d+\s*[.)]\s*\S{0,2}/) || [n.slice(0, 24)])[0], probes: [n.substr(L / 3 | 0, 40), n.substr(2 * L / 3 | 0, 40)]};
+    sigs.set(el, v); return v;
+  }
+  const same = (c, v) => c.probes.some(p => v.n.includes(p));
+  const blank = (id, kind) => ({id, salt: SALT, page: PAGE, kind, w: 0, s: []});
+
+  /* ── 필기층 ── */
+  const NSV = 'http://www.w3.org/2000/svg';
+  const kids = c => { const i = c.el.querySelector(':scope > .inner'); return [...(i || c.el).children].filter(x => x !== c.svg); };
+  const scaleOf = c => (c.el.getBoundingClientRect().width / c.el.offsetWidth) || 1;
+  function unfit(c) { if (!c.fitted) return; const st = c.el.style; st.width = st.transform = st.transformOrigin = st.marginLeft = st.marginBottom = st.boxSizing = ''; c.fitted = false; }
+  function fit(c) {   // 필기한 뒤 폭이 바뀌면(화면 회전·창 크기) 필기 때 폭으로 그리고 비율만 맞춘다. 쪽 그림은 그림과 함께 늘고 준다(setBox)
+    if (c.kind === 'img') return setBox(c);
+    unfit(c); const W = c.q.w, el = c.el, nat = el.offsetWidth;
+    if (!W || !nat || Math.abs(nat - W) < 1) return;
+    const cs = getComputedStyle(el), ml = parseFloat(cs.marginLeft) || 0, mb = parseFloat(cs.marginBottom) || 0, s = Math.min(nat / W, MAX_SCALE);
+    el.style.boxSizing = 'border-box'; el.style.width = W + 'px'; el.style.transformOrigin = '0 0'; el.style.transform = `scale(${s})`;
+    el.style.marginLeft = (ml + (nat - W * s) / 2) + 'px'; el.style.marginBottom = (el.offsetHeight * (s - 1) + mb) + 'px'; c.fitted = true;
+  }
+  function setBox(c) {
+    const w = c.el.clientWidth, h = c.el.clientHeight; if (!w || !h) return;
+    c.W = c.q.w || c.W || w; c.svg.setAttribute('viewBox', `0 0 ${c.W} ${c.W * h / w}`); c.svg.setAttribute('preserveAspectRatio', 'none');
+  }
+  function anchor(c, y) {   // 획은 카드의 직계 자식 하나에 묶는다 — 채점 뒤 해설이 들어와도 함께 움직인다
+    if (c.kind === 'img') return [-1, 0];
+    const ks = kids(c), t = c.svg.getBoundingClientRect().top, s = scaleOf(c);
+    for (let i = 0; i < ks.length; i++) { const r = ks[i].getBoundingClientRect(); if (y <= (r.bottom - t) / s) return [i, (r.top - t) / s]; }
+    const l = ks.length - 1; return l < 0 ? [-1, 0] : [l, (ks[l].getBoundingClientRect().top - t) / s];
+  }
+  function paint(c) {
+    if (c.kind === 'img') { c.dy = []; return; }
+    const ks = kids(c), t = c.svg.getBoundingClientRect().top, s = scaleOf(c);
+    c.dy = c.q.s.map((st, i) => { const k = ks[st.a], dy = k ? Math.round((k.getBoundingClientRect().top - t) / s - st.ay) : 0, p = c.svg.children[i]; if (p) { if (dy) p.setAttribute('transform', `translate(0 ${dy})`); else p.removeAttribute('transform'); } return dy; });
+  }
+  function dOf(p) {
+    let x = p[0] / 2, y = p[1] / 2, d = `M${x} ${y}`; if (p.length <= 2) return d + 'l.01 0';
+    for (let i = 2; i + 1 < p.length; i += 2) { const nx = x + p[i] / 2, ny = y + p[i + 1] / 2; d += `Q${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`; x = nx; y = ny; }
+    return d + `L${x} ${y}`;
+  }
+  function pathEl(st) { const p = document.createElementNS(NSV, 'path'); if (st.h) p.setAttribute('class', 'hl'); p.setAttribute('stroke', (st.h ? HCOL : COL)[st.c] || COL[0]); p.setAttribute('d', dOf(st.p)); return p; }
+  function draw(c) { c.svg.textContent = ''; c.q.s.forEach(st => c.svg.appendChild(pathEl(st))); paint(c); }
+  const ro = new ResizeObserver(es => es.forEach(e => { const c = cards.get(e.target); if (c) { if (c.kind === 'img') setBox(c); else { if (c.fitted) fit(c); paint(c); } } }));
+  let lastW = innerWidth;
+  addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; cards.forEach(c => { fit(c); paint(c); }); });
+
+  function mount(el, kind, q, v) {
+    const svg = document.createElementNS(NSV, 'svg'); svg.setAttribute('class', 'bn-l'); el.appendChild(svg);
+    if (getComputedStyle(el).position === 'static') el.classList.add('bn-rel');
+    const c = {el, kind, svg, q, dy: [], fitted: false, W: 0, sig: v.sig, head: v.head || '', probes: v.probes || [''], len: v.n ? v.n.length : 0}; cards.set(el, c);
+    fit(c); draw(c); ro.observe(el); return c;
+  }
+  function unmount(c) { unfit(c); ro.unobserve(c.el); if (c.svg.parentNode) c.svg.remove(); c.el.classList.remove('bn-rel'); cards.delete(c.el); undo = undo.filter(u => u.c !== c); if (act && act.c === c) discard(); }
+  function swap(c, q, v) { undo = undo.filter(u => u.c !== c); if (act && act.c === c) discard(); unfit(c); c.q = q; c.sig = v.sig; c.head = v.head || ''; c.probes = v.probes || ['']; c.len = v.n ? v.n.length : 0; c.W = 0; fit(c); draw(c); }
+
+  function sync() {
+    stimer = 0; cand = candidates(); const gone = [];   // 같은 문항이 새로 그려지면(채점 뒤 다시 그리기) 필기를 넘겨준다
+    for (const [el, c] of [...cards]) {
+      if (cand.has(el) && el.isConnected && c.svg.parentNode === el) continue;
+      if (c.kind === 'text' && c.q.s.length && c.len >= 40) gone.push(c);
+      unmount(c);
+    }
+    let any = false;
+    for (const [el, kind] of cand) {
+      if (!any && vis(el)) any = true;
+      const c = cards.get(el), v = ident(el, kind);
+      if (c) {
+        if (kind === 'img') { if (v.id !== c.q.id) swap(c, recs.get(v.id) || blank(v.id, kind), v); }
+        else if (kind === 'text' && v.sig !== c.sig) { c.sig = v.sig; if (!same(c, v)) swap(c, recs.get(v.id) || blank(v.id, kind), v); }   // 카드는 그대로인데 속 내용이 통째로 바뀐 경우
+        continue;
+      }
+      let q = recs.get(v.id);
+      if (!q && kind === 'text') { const g = gone.find(g => g.head === v.head && g.q.id !== v.id && g.probes.every(p => v.n.includes(p))); if (g) { q = {...g.q, id: v.id, s: g.q.s.map(s => ({...s, p: s.p.slice()}))}; save(q); } }
+      if (q) mount(el, kind, q, v);
+    }
+    showBar(any);
+  }
+  const schedule = () => { if (!stimer) stimer = setTimeout(sync, 60); };
+  const ours = n => n.nodeType === 1 && (n.id === 'bnBar' || (n.classList && n.classList.contains('bn-l')));
+  const mine = m => {
+    const t = m.target.nodeType === 1 ? m.target : m.target.parentElement; if (t && t.closest('.bn-l,#bnBar')) return true;
+    if (m.type === 'childList') { const ns = [...m.addedNodes, ...m.removedNodes]; return ns.length > 0 && ns.every(ours); }
+    return false;
+  };
+  new MutationObserver(ms => { if (!ms.every(mine)) schedule(); }).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'src']});
+  addEventListener('hashchange', schedule); addEventListener('popstate', schedule);
+  NARROW.addEventListener('change', async () => { await flush(); [...cards.values()].forEach(unmount); sync(); setSt('이 방향에서 쓴 필기만 보입니다'); });
+
+  /* ── 입력 ── */
+  function xy(c, e) {
+    const r = c.svg.getBoundingClientRect();
+    if (c.kind === 'img') { const k = (c.W || r.width) / (r.width || 1); return [(e.clientX - r.left) * k, (e.clientY - r.top) * k]; }
+    const s = scaleOf(c); return [(e.clientX - r.left) / s, (e.clientY - r.top) / s];
+  }
+  function eraseAt(c, x, y) {
+    let hit = false;
+    for (let i = c.q.s.length - 1; i >= 0; i--) {
+      const st = c.q.s[i], dy = c.dy[i] || 0; let px = st.p[0] / 2, py = st.p[1] / 2 + dy, on = Math.hypot(px - x, py - y) < ERASE_R;
+      for (let j = 2; !on && j + 1 < st.p.length; j += 2) { px += st.p[j] / 2; py += st.p[j + 1] / 2; on = Math.hypot(px - x, py - y) < ERASE_R; }
+      if (on) { c.q.s.splice(i, 1); undo.push({t: 'del', c, st, i}); hit = true; }
+    }
+    if (hit) { draw(c); save(c.q); } return hit;
+  }
+  function discard() { if (act && act.path) act.path.remove(); act = null; penOn(false); }
+  function addPoint(e) {
+    const a = act, [x, y] = xy(a.c, e), X = Math.round(x * 2), Y = Math.round(y * 2);
+    a.dist = Math.max(a.dist, Math.hypot(e.clientX - a.cx, e.clientY - a.cy));
+    if (a.erase) { if (eraseAt(a.c, x, y)) a.hit = true; return; }
+    const dx = X - a.lx, dy = Y - a.ly; if (dx * dx + dy * dy < 4) return;
+    const px = a.lx / 2, py = a.ly / 2, nx = X / 2, ny = Y / 2;
+    a.st.p.push(dx, dy); a.lx = X; a.ly = Y; a.body += `Q${px} ${py} ${(px + nx) / 2} ${(py + ny) / 2}`; a.path.setAttribute('d', a.body + `L${nx} ${ny}`);
+  }
+  function passTap(x, y) { const t = document.elementFromPoint(x, y); if (!t) return; synth = true; try { t.click(); } finally { synth = false; } }
+  function cardAt(t) { for (let n = t; n && n !== document.body; n = n.parentElement) if (cand.has(n)) return n; return null; }
+  document.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'pen' || act) return;                        // 필기는 펜슬만 — 손가락·마우스는 화면 넘기기·단어 선택 그대로
+    if (!penSeen) { penSeen = true; try { localStorage.setItem('bnPen', '1'); } catch (x1) {} schedule(); }
+    if (!e.target.closest || e.target.closest('input,textarea,select,audio,video,button,a,[contenteditable],#bnBar')) return;
+    cand = candidates(); const el = cardAt(e.target); if (!el) return;
+    let c = cards.get(el); if (c && c.svg.parentNode !== el) { unmount(c); c = null; }
+    if (!c) { const kind = cand.get(el), v = ident(el, kind); c = mount(el, kind, recs.get(v.id) || blank(v.id, kind), v); }
+    const [x, y] = xy(c, e), X = Math.round(x * 2), Y = Math.round(y * 2), erase = mode === 'erase';
+    act = {id: e.pointerId, c, cx: e.clientX, cy: e.clientY, t: Date.now(), dist: 0, erase, hit: false, lx: X, ly: Y}; eat = true;
+    if (erase) { if (eraseAt(c, x, y)) act.hit = true; }
+    else { const [a, ay] = anchor(c, y), hl = mode === 'hl'; act.st = {c: hl ? hc : pc, a, ay: Math.round(ay), p: [X, Y]}; if (hl) act.st.h = 1; act.body = `M${X / 2} ${Y / 2}`; act.path = pathEl(act.st); c.svg.appendChild(act.path); }
+    penOn(true); const sel = getSelection(); if (sel && !sel.isCollapsed) sel.removeAllRanges();
+    try { el.setPointerCapture(e.pointerId); } catch (x2) {}
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+  document.addEventListener('pointermove', e => { if (!act || e.pointerId !== act.id) return; const ev = e.getCoalescedEvents ? e.getCoalescedEvents() : []; (ev.length ? ev : [e]).forEach(addPoint); e.stopPropagation(); }, true);
+  document.addEventListener('pointerup', e => {
+    if (!act || e.pointerId !== act.id) return; e.stopPropagation();
+    const a = act, tap = a.dist < TAP_PX && Date.now() - a.t < TAP_MS; penOn(false); blockClick = Date.now() + 400;
+    if (a.erase) { act = null; if (tap && !a.hit) passTap(e.clientX, e.clientY); return; }
+    if (tap) { discard(); passTap(e.clientX, e.clientY); return; }
+    act = null; const c = a.c; if (!c.q.w) c.q.w = c.kind === 'img' ? (c.W || c.el.clientWidth) : c.el.offsetWidth;
+    c.q.s.push(a.st); undo.push({t: 'add', c, st: a.st}); paint(c); save(c.q);
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  }, true);
+  document.addEventListener('pointercancel', e => { if (act && e.pointerId === act.id) { discard(); e.stopPropagation(); } }, true);
+  document.addEventListener('click', e => { if (!synth && Date.now() < blockClick && !(e.target.closest && e.target.closest('#bnBar'))) { e.preventDefault(); e.stopPropagation(); } }, true);
+  document.addEventListener('dragstart', e => { if (act) e.preventDefault(); }, true);
+  // 손가락은 브라우저와 화면 코드가 그대로 처리한다(넘기기·확대·길게 눌러 단어 선택 → 찾아보기). 막는 것은 펜으로 긋는 동안의 넘김·손바닥·화면의 밀기 동작뿐.
+  const hold = e => { if (act) { e.preventDefault(); e.stopPropagation(); } };
+  document.addEventListener('touchstart', hold, {passive: false, capture: true});
+  document.addEventListener('touchmove', hold, {passive: false, capture: true});
+  const rel = e => { if (eat) { e.stopPropagation(); if (!e.touches.length) eat = false; } };
+  document.addEventListener('touchend', rel, true); document.addEventListener('touchcancel', rel, true);
+
+  /* ── 도구 막대 ── */
+  function place(b) {   // 화면 아래에 붙어 있는 단추 줄(교재의 쪽 넘김 등)이 있으면 그 위로 올린다
+    let h = 0;
+    for (const el of document.elementsFromPoint(innerWidth - 24, innerHeight - 24)) {
+      if (el === b || b.contains(el)) continue;
+      for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) { const p = getComputedStyle(n).position; if (p === 'fixed' || p === 'sticky') { h = Math.max(h, innerHeight - n.getBoundingClientRect().top); break; } }
+    }
+    const v = h > 0 && h < innerHeight / 2 ? `${Math.round(h) + 8}px` : ''; if (b.style.bottom !== v) b.style.bottom = v;
+  }
+  function showBar(any) { const b = ensureBar(), h = !(any && (penSeen || (!NARROW.matches && navigator.maxTouchPoints > 0))); if (b.hidden !== h) b.hidden = h; if (!h) place(b); }   // 펜을 댄 적 있는 기기와 태블릿에만 띄운다(손가락·마우스로는 못 쓰므로)
+  function setMode(m) { mode = m; paintBar(); }
+  function paintBar() {
+    const b = document.getElementById('bnBar'); if (!b) return;
+    ['pen', 'hl', 'erase'].forEach(a => b.querySelector(`[data-a=${a}]`).classList.toggle('on', mode === a));
+    b.querySelectorAll('.bn-dot').forEach(d => { d.hidden = d.dataset.t !== mode; d.classList.toggle('on', +d.dataset.c === (d.dataset.t === 'hl' ? hc : pc)); });
+  }
+  function ensureBar() {
+    let b = document.getElementById('bnBar'); if (b) return b;
+    b = document.createElement('div'); b.id = 'bnBar'; b.hidden = true;
+    b.innerHTML = `<span id="bnSt">${HINT}</span><button data-a="pen" type="button">🖊 펜</button><button data-a="hl" type="button">🖍 형광펜</button><button data-a="erase" type="button">지우개</button>${[['pen', COL, '펜'], ['hl', HCOL, '형광펜']].map(([t, cs, nm]) => cs.map((c, i) => `<button class="bn-dot" data-t="${t}" data-c="${i}" type="button" aria-label="${nm} 색 ${i + 1}"><i style="background:${c}"></i></button>`).join('')).join('')}<button data-a="undo" type="button" aria-label="되돌리기">↩</button>`;
+    document.body.appendChild(b); paintBar();
+    b.onclick = e => {
+      const t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.c) { if (t.dataset.t === 'hl') hc = +t.dataset.c; else pc = +t.dataset.c; paintBar(); return; }
+      const a = t.dataset.a;
+      if (a === 'undo') { const u = undo.pop(); if (!u) return; if (u.t === 'add') u.c.q.s.splice(u.c.q.s.indexOf(u.st), 1); else u.c.q.s.splice(u.i, 0, u.st); draw(u.c); save(u.c.q); return; }
+      setMode(a);
+    };
+    return b;
+  }
+  window.BOOKNOTE = {dump: () => tx('readonly', s => s.index('salt').getAll(SALT)), cards: () => cards.size};
+  load().then(sync);
+})();
+</script>
 </body>
 </html>
