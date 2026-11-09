@@ -8,15 +8,15 @@
 <style>
 :root{--blue:#0d3880;--link:#004aac;--band:#1a4b9c;--yel:#fbe46a;--ink:#333;--mut:#6b7280;--line:#d9dee7;--bg:#fff;--side:#f6f7f9}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Open Sans",-apple-system,"Apple SD Gothic Neo",sans-serif;-webkit-text-size-adjust:100%}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:calc(15px*var(--fz,1))/1.5 "Open Sans",-apple-system,"Apple SD Gothic Neo",sans-serif;-webkit-text-size-adjust:100%}
 a{color:var(--link);text-decoration:none}
 button{font:inherit;cursor:pointer}
 .top{position:sticky;top:0;z-index:20;background:var(--band);padding:8px 12px calc(8px) 12px;padding-top:max(8px,env(safe-area-inset-top));display:flex;gap:8px;align-items:center}
-.top .bk{background:none;border:0;color:#fff;font-size:26px;line-height:1;padding:0 6px}
-.pill{background:var(--yel);color:#222;font-weight:600;border-radius:4px 0 0 4px;padding:7px 10px;white-space:nowrap;font-size:14px}
+.top .bk{background:none;border:0;color:#fff;font-size:calc(26px*var(--fz,1));line-height:1;padding:0 6px}
+.pill{background:var(--yel);color:#222;font-weight:600;border-radius:4px 0 0 4px;padding:7px 10px;white-space:nowrap;font-size:calc(14px*var(--fz,1))}
 .sbox{flex:1;display:flex;min-width:0}
-.sbox input{flex:1;min-width:0;border:0;padding:7px 10px;font:inherit;font-size:15px;border-radius:0 4px 4px 0;outline:none}
-.top .tc{background:#fff;border:0;border-radius:4px;padding:6px 10px;color:var(--blue);font-weight:600;font-size:14px}
+.sbox input{flex:1;min-width:0;border:0;padding:7px 10px;font:inherit;font-size:calc(15px*var(--fz,1));border-radius:0 4px 4px 0;outline:none}
+.top .tc{background:#fff;border:0;border-radius:4px;padding:6px 10px;color:var(--blue);font-weight:600;font-size:calc(14px*var(--fz,1))}
 .wrap{max-width:1180px;margin:0 auto;display:flex;gap:24px;padding:14px 16px 60px}
 main{flex:1;min-width:0;max-width:860px}
 aside{width:280px;flex:none}
@@ -24,8 +24,8 @@ aside{width:280px;flex:none}
 @media (min-width:1000px){.top .tc{display:none}}
 @media (min-width:1000px){.top .tc.dl{display:inline-block}}
 .top .tc.dl.ing{font-variant-numeric:tabular-nums;min-width:52px}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;max-width:min(92vw,520px);padding:10px 14px;border-radius:12px;background:#24252b;color:#fff;font-size:14px;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.25)}
-.crumb{font-size:13px;color:var(--mut);margin:0 0 6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;max-width:min(92vw,520px);padding:10px 14px;border-radius:12px;background:#24252b;color:#fff;font-size:calc(14px*var(--fz,1));line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.crumb{font-size:calc(13px*var(--fz,1));color:var(--mut);margin:0 0 6px}
 .crumb a{color:var(--link)}
 .pg{position:relative;width:100%;background:#fff}
 .pg img{display:block;width:100%;height:auto}
@@ -33,49 +33,61 @@ aside{width:280px;flex:none}
 .pg a.hl{position:absolute;display:block;border-radius:3px}
 .pg a.hl:active,.pg a.hl:hover{background:rgba(0,74,172,.14)}
 .nav{display:flex;justify-content:space-between;margin:18px 0 0}
-.nav button{background:var(--blue);color:#fff;border:0;border-radius:18px;padding:7px 16px;font-size:13px}
+.nav button{background:var(--blue);color:#fff;border:0;border-radius:18px;padding:7px 16px;font-size:calc(13px*var(--fz,1))}
 .nav button[disabled]{visibility:hidden}
 .flash{animation:fl 1.6s ease-out}
 @keyframes fl{0%{background:rgba(251,228,106,.9)}100%{background:transparent}}
 .mark{position:absolute;left:0;right:0;height:0}
 /* 목차 */
-.toc{border:1px solid var(--line);border-radius:4px;background:var(--side);font-size:14px}
-.toc h3{margin:0;padding:8px 12px;font-size:14px;background:#e9ecf1;border-bottom:1px solid var(--line)}
+.toc{border:1px solid var(--line);border-radius:4px;background:var(--side);font-size:calc(14px*var(--fz,1))}
+.toc h3{margin:0;padding:8px 12px;font-size:calc(14px*var(--fz,1));background:#e9ecf1;border-bottom:1px solid var(--line)}
 .toc .dv{display:block;padding:8px 12px 4px}
 .toc ul{list-style:none;margin:0;padding:4px 0 8px}
 .toc li.s>button{display:flex;gap:8px;width:100%;text-align:left;background:none;border:0;padding:5px 12px;color:#494949}
 .toc li.s>button b{color:var(--link);width:12px;flex:none;font-weight:700}
 .toc li.s.on>button{color:#111;font-weight:600}
 .toc ol{list-style:none;margin:0;padding:0 0 4px 32px}
-.toc ol a{display:block;padding:3px 8px 3px 0;color:var(--link);font-size:13.5px}
+.toc ol a{display:block;padding:3px 8px 3px 0;color:var(--link);font-size:calc(13.5px*var(--fz,1))}
 .toc ol a.cur{background:#e3e7ee;color:#111;border-radius:3px;padding-left:4px}
 aside .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
 .drawer{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.35);display:flex;justify-content:flex-end}
 .drawer[hidden]{display:none}
 .drawer .toc{width:min(340px,88vw);height:100%;overflow:auto;border-radius:0;padding-top:env(safe-area-inset-top)}
-.drawer .x{position:sticky;top:0;float:right;background:none;border:0;font-size:24px;padding:4px 12px}
+.drawer .x{position:sticky;top:0;float:right;background:none;border:0;font-size:calc(24px*var(--fz,1));padding:4px 12px}
 /* 첫 화면 */
-.home h1{font-weight:400;font-size:28px;margin:6px 0 2px;color:#222}
+.home h1{font-weight:400;font-size:calc(28px*var(--fz,1));margin:6px 0 2px;color:#222}
 .home .by{color:var(--mut);margin:0 0 16px}
 .home .lead{margin:0 0 18px}
-.home h2{font-weight:400;font-size:20px;margin:22px 0 8px;display:flex;align-items:baseline;gap:12px}
-.home h2 a{font-size:14px}
+.home h2{font-weight:400;font-size:calc(20px*var(--fz,1));margin:22px 0 8px;display:flex;align-items:baseline;gap:12px}
+.home h2 a{font-size:calc(14px*var(--fz,1))}
 .sec{border-top:1px solid var(--line)}
-.sec>button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:11px 4px;text-align:left;color:#222;font-size:16px}
-.sec>button b{color:var(--link);font-size:18px;width:14px}
-.sec>button .no{color:var(--mut);font-size:13px;width:26px;flex:none}
+.sec>button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:11px 4px;text-align:left;color:#222;font-size:calc(16px*var(--fz,1))}
+.sec>button b{color:var(--link);font-size:calc(18px*var(--fz,1));width:14px}
+.sec>button .no{color:var(--mut);font-size:calc(13px*var(--fz,1));width:26px;flex:none}
 .sec ol{list-style:none;margin:0 0 10px;padding:0 0 0 54px}
 .sec ol a{display:flex;gap:10px;padding:4px 0}
 .sec ol a span{color:var(--mut);width:30px;flex:none}
 .hits a{display:block;padding:10px 4px;border-top:1px solid var(--line);color:var(--ink)}
 .hits a b{color:var(--link);font-weight:600}
-.hits a small{display:block;color:var(--mut);font-size:13px}
+.hits a small{display:block;color:var(--mut);font-size:calc(13px*var(--fz,1))}
 .hits mark{background:#fff3a8}
 .gate{max-width:380px;margin:60px auto;padding:0 16px;text-align:center}
-.gate input{width:100%;padding:11px;font-size:16px;border:1px solid #c5ccd8;border-radius:6px;margin:12px 0}
-.gate button{width:100%;padding:11px;background:var(--blue);color:#fff;border:0;border-radius:6px;font-size:16px}
+.gate input{width:100%;padding:11px;font-size:calc(16px*var(--fz,1));border:1px solid #c5ccd8;border-radius:6px;margin:12px 0}
+.gate button{width:100%;padding:11px;background:var(--blue);color:#fff;border:0;border-radius:6px;font-size:calc(16px*var(--fz,1))}
 .gate .msg{color:#b91c1c;min-height:1.4em;margin-top:8px}
-.note{color:var(--mut);font-size:13px;margin-top:28px}
+.note{color:var(--mut);font-size:calc(13px*var(--fz,1));margin-top:28px}
+</style>
+<style id="ipadCss">
+/* 아이패드 기준 화면(2026-11-09) — 폭 740px 이상(아이패드 세로·가로, 컴퓨터)에서 본문 폭을 넓히고 글자를 키운다. 휴대폰은 그대로. */
+@media (min-width:740px) and (min-height:560px){
+:root{--fz:1.22}
+main{max-width:1100px!important}
+.wrap{padding-left:26px!important;padding-right:26px!important}
+.brand img{max-width:640px!important}
+input[type=radio],input[type=checkbox]{width:19px;height:19px}
+.lock,.gate{max-width:600px!important}
+#pwaSheet .pwa-box{max-width:620px!important}
+}
 </style>
 </head>
 <body>

@@ -10,45 +10,45 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--card:#1f1f23;--ink:#ececef;--sub:#9a9aa2;--line:#33333a;--acc:#fb923c;--acc2:#3a2618;--bar:rgba(31,31,35,.94)}}
 :root[data-theme="dark"]{--bg:#121214;--card:#1f1f23;--ink:#ececef;--sub:#9a9aa2;--line:#33333a;--acc:#fb923c;--acc2:#3a2618;--bar:rgba(31,31,35,.94)}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:calc(16px*var(--fz,1))/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
 button,input{font:inherit}
 button{border:0;border-radius:9px;padding:8px 12px;background:var(--acc2);color:var(--acc);font-weight:700;cursor:pointer}
 button:disabled{opacity:.4}
 button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--bar);border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
-.top h1{flex:1;min-width:0;margin:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.top .sub{display:block;font-size:12px;font-weight:400;color:var(--sub);overflow:hidden;text-overflow:ellipsis}
+.top h1{flex:1;min-width:0;margin:0;font-size:calc(16px*var(--fz,1));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .sub{display:block;font-size:calc(12px*var(--fz,1));font-weight:400;color:var(--sub);overflow:hidden;text-overflow:ellipsis}
 .stage{max-width:920px;margin:0 auto;padding:10px 8px 92px;position:relative}
 .page{position:relative;background:#fff;border-radius:4px;box-shadow:0 1px 8px rgba(0,0,0,.12);overflow:hidden;touch-action:pan-y pinch-zoom}
 .page img{display:block;width:100%;height:auto;-webkit-user-select:none;user-select:none}
-.page .ph{position:absolute;inset:0;display:grid;place-items:center;color:#888;font-size:14px}
+.page .ph{position:absolute;inset:0;display:grid;place-items:center;color:#888;font-size:calc(14px*var(--fz,1))}
 .page .ph[hidden]{display:none}
 .stage.scroll .page{margin:0 0 10px}
 .stage.scroll .page img{position:absolute;inset:0;height:100%;object-fit:contain}
 .bot{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));background:var(--bar);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
 .bot input[type=range]{flex:1;min-width:0;accent-color:var(--acc)}
-.bot .pn{display:flex;align-items:center;gap:4px;font-size:14px;color:var(--sub);white-space:nowrap}
+.bot .pn{display:flex;align-items:center;gap:4px;font-size:calc(14px*var(--fz,1));color:var(--sub);white-space:nowrap}
 .bot .pn input{width:58px;padding:5px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);text-align:center}
 .panel{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column}
 .panel[hidden]{display:none}
 .panel .ph2{display:flex;gap:8px;align-items:center;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--card)}
 .panel .ph2 input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
-.panel .hint{padding:6px 14px;font-size:13px;color:var(--sub)}
+.panel .hint{padding:6px 14px;font-size:calc(13px*var(--fz,1));color:var(--sub)}
 .panel ul{list-style:none;margin:0;padding:0 0 40px;overflow:auto;flex:1;-webkit-overflow-scrolling:touch}
 .panel li a{display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
 .panel li a .t{flex:1;min-width:0}
-.panel li a .p{flex:none;color:var(--sub);font-size:13px}
+.panel li a .p{flex:none;color:var(--sub);font-size:calc(13px*var(--fz,1))}
 .panel li.l1 a{font-weight:700;background:var(--card)}
 .panel li.l2 a{padding-left:24px}
 .panel li.cur a{background:var(--acc2)}
-.panel li .sn{display:block;font-size:13px;color:var(--sub);margin-top:2px}
+.panel li .sn{display:block;font-size:calc(13px*var(--fz,1));color:var(--sub);margin-top:2px}
 .panel mark{background:#fde68a;color:#111;border-radius:2px}
 .gate{max-width:420px;margin:12vh auto 0;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:14px}
-.gate h2{margin:0 0 6px;font-size:18px}
-.gate p{margin:0 0 12px;color:var(--sub);font-size:14px}
+.gate h2{margin:0 0 6px;font-size:calc(18px*var(--fz,1))}
+.gate p{margin:0 0 12px;color:var(--sub);font-size:calc(14px*var(--fz,1))}
 .gate .row{display:flex;gap:8px}
 .gate input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
-.gate .msg{margin-top:8px;min-height:1em;font-size:14px;color:var(--acc)}
+.gate .msg{margin-top:8px;min-height:1em;font-size:calc(14px*var(--fz,1));color:var(--acc)}
 .page{container-type:inline-size}
 /* 번호 누르면 정답(10-03, EGU 5판): 번호 자리에 옅은 동그라미, 누르면 말풍선 */
 .hz{position:absolute;z-index:2;padding:0;border:0;border-radius:999px;background:rgba(194,65,12,.07);box-shadow:inset 0 0 0 1.5px rgba(194,65,12,.5);cursor:pointer}
@@ -64,11 +64,23 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 .top button.off{background:transparent;color:var(--sub);box-shadow:inset 0 0 0 1px var(--line)}
 .shelf{max-width:780px;margin:0 auto;padding:16px}
 .shelf a{display:flex;gap:12px;align-items:center;margin:0 0 10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);text-decoration:none}
-.shelf .ic{font-size:26px}
+.shelf .ic{font-size:calc(26px*var(--fz,1))}
 .shelf .nm{font-weight:700}
-.shelf .ds{display:block;font-size:13px;color:var(--sub)}
-.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:60;max-width:min(92vw,520px);padding:10px 14px;border-radius:12px;background:#24252b;color:#fff;font-size:14px;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.shelf .ds{display:block;font-size:calc(13px*var(--fz,1));color:var(--sub)}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:60;max-width:min(92vw,520px);padding:10px 14px;border-radius:12px;background:#24252b;color:#fff;font-size:calc(14px*var(--fz,1));line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 #dlB.ing{font-variant-numeric:tabular-nums;min-width:52px}
+</style>
+<style id="ipadCss">
+/* 아이패드 기준 화면(2026-11-09) — 폭 740px 이상(아이패드 세로·가로, 컴퓨터)에서 본문 폭을 넓히고 글자를 키운다. 휴대폰은 그대로. */
+@media (min-width:740px) and (min-height:560px){
+:root{--fz:1.19}
+.shelf,.stage{max-width:1100px!important}
+.wrap{padding-left:26px!important;padding-right:26px!important}
+.brand img{max-width:640px!important}
+input[type=radio],input[type=checkbox]{width:19px;height:19px}
+.lock,.gate{max-width:600px!important}
+#pwaSheet .pwa-box{max-width:620px!important}
+}
 </style>
 </head>
 <body>
