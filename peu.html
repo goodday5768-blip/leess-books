@@ -892,11 +892,15 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
     if (app) {
       const arts = app.querySelectorAll('main > article');
       if (arts.length) add(arts, 'book');
-      else { const pg = app.querySelectorAll('.page'); if (pg.length) add(pg, 'img'); else add([...app.children].filter(x => !x.matches(SKIP)), 'text'); }
+      else { const pg = app.querySelectorAll('.page'); if (pg.length) add(pg, 'img'); else add(kids(app), 'text'); }
     }
-    const root = $('#root'); if (root) add([...root.children].filter(x => !x.matches(SKIP)), 'text');
+    const root = $('#root'); if (root) add(kids(root), 'text');
+    const view = $('#view') || $('#main'); if (view && !app && !root) add(kids(view), 'text');   // 11-10 통합앱·선생님 앱·학습 현황·일정표(목록·현황 화면)에도 필기
+    add(document.querySelectorAll('.gc-month'), 'text');   // 11-10 일정표 달력: 달 블록 하나 = 카드 하나(학생·달로 저장)
     return out;
   }
+  // 뿌리의 자식 가운데 필기 카드가 될 것 — 달력(.gc-month)을 품은 칸은 통째로 붙이지 않고 그 안의 .card만(달력은 달 블록으로 따로)
+  const kids = root => { const out = []; for (const x of root.children) { if (x.nodeType !== 1 || x.matches(SKIP)) continue; if (x.querySelector('.gc-month')) { for (const c of x.querySelectorAll('.card')) if (!c.querySelector('.gc-month') && !c.closest('.gc-wrap')) out.push(c); } else out.push(x); } return out; };
   const vis = el => el.getClientRects().length > 0;
   function norm(el) {   // 카드의 내용 지문(指紋): 그림·음원 파일 이름 + 글자(빈칸에 쓴 답·글상자는 들어가지 않는다)
     let t = ''; el.querySelectorAll('[data-enc],img[src]').forEach(i => { const k = i.dataset.enc || i.getAttribute('src') || ''; if (k && !/^(blob|data):/.test(k)) t += k + '|'; });
@@ -907,6 +911,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
   function ident(el, kind) {   // {id, …} — 글 카드는 내용이 그대로면 다시 계산하지 않는다
     if (kind === 'book') return {id: `${SALT}:${PAGE}:${(location.hash.match(/^#g(\d+)/) || [])[1]}:${el.id}:${NARROW.matches ? 'm' : 'w'}`};
     if (kind === 'img') return {id: `${SALT}:${PAGE}:${BOOK}:p${el.dataset.p || new URLSearchParams(location.search).get('p') || 1}`};
+    if (el.classList.contains('gc-month')) return {id: `${SALT}:${PAGE}:cal:${(el.closest('.gc-wrap') || {dataset: {}}).dataset.ink || ''}:${el.id}`};   // 일정표: 학생·달로 고정(내용이 바뀌어도 같은 카드)
     const sig = (el.textContent || '').length + '/' + el.querySelectorAll('[data-enc],img[src]').length, old = sigs.get(el);
     if (old && old.sig === sig) return old;
     // head = 첫머리(「3. 주제」처럼 번호+유형 두 글자, 번호가 없으면 24자), probes = 본문 가운데 두 토막. 채점으로 해설·정오 표시가 덧붙어도 토막은 남는다 → 같은 카드로 본다

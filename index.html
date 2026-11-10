@@ -50,6 +50,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-of
 .gate input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
 .gate .msg{margin-top:8px;min-height:1em;font-size:calc(14px*var(--fz,1));color:var(--acc)}
 .page{container-type:inline-size}
+/* 글자층(11-10): 쪽 그림 위 투명 글자 — 길게 눌러(마우스로 끌어) 선택·복사 */
+.tl{position:absolute;z-index:1;overflow:hidden;line-height:1;color:transparent;-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+.tl div{height:0}
+.tl span{position:absolute;white-space:pre;transform-origin:0 0;cursor:text;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,"Apple SD Gothic Neo",sans-serif}
+.tl ::selection{background:rgba(30,102,245,.32);color:transparent}
+.tl ::-moz-selection{background:rgba(30,102,245,.32);color:transparent}
 /* 번호 누르면 정답(10-03, EGU 5판): 번호 자리에 옅은 동그라미, 누르면 말풍선 */
 .hz{position:absolute;z-index:2;padding:0;border:0;border-radius:999px;background:rgba(194,65,12,.07);box-shadow:inset 0 0 0 1.5px rgba(194,65,12,.5);cursor:pointer}
 .hz.h{border-radius:5px}
@@ -90,7 +96,7 @@ input[type=radio],input[type=checkbox]{width:19px;height:19px}
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); };
-  var BOOKS = [{"id": "egu5", "base": "../leess-books2/", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792170131, "av": 1790997240, "sm": true}, {"id": "giui", "base": "../leess-books2/", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1792170131, "sm": true}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792169148, "av": 1791002921, "sm": true}, {"id": "xi", "short": "자이스토리 어법·어휘", "title": "자이스토리 영어 어법·어휘 기본", "desc": "21단원 + 모의고사 8회 · 224쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792169166, "av": 1791074997, "sm": true}];
+  var BOOKS = [{"id": "egu5", "base": "../leess-books2/", "short": "EGU 5판", "title": "English Grammar in Use (5판)", "desc": "145 Units · 394쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792170131, "av": 1790997240, "sm": true, "tl": 1794284757}, {"id": "giui", "base": "../leess-books2/", "short": "Grammar in Use (미국판)", "title": "Grammar in Use Intermediate (미국판)", "desc": "142 Units · 320쪽", "scroll": true, "v": 1792170131, "sm": true, "tl": 1794284758}, {"id": "giu", "short": "Essential GIU", "title": "Essential Grammar in Use (4판)", "desc": "115 Units · 258쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792169148, "av": 1791002921, "sm": true, "tl": 1794284759}, {"id": "xi", "short": "자이스토리 어법·어휘", "title": "자이스토리 영어 어법·어휘 기본", "desc": "21단원 + 모의고사 8회 · 224쪽 · 문제 번호 누르면 정답", "scroll": true, "ans": true, "v": 1792169166, "av": 1791074997, "sm": true, "tl": 1794284760}];
   try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}   // 오프라인(10-03)
   var CK = 'leess:tcode', q = new URLSearchParams(location.search), bid = q.get('b');
   var ls = {get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
@@ -123,7 +129,7 @@ input[type=radio],input[type=checkbox]{width:19px;height:19px}
   try { if (window.caches) { CS = caches.open(CN).catch(function () { return null; });
     caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('lb:' + bid + ':') === 0 && k !== CN) caches.delete(k); }); }).catch(function () {}); } } catch (e) { CS = null; }
   async function getBin(name) {
-    var url = BB + name + (name === 'ans.bin' && BI.av ? '?av=' + BI.av : ''), c = CS && await CS, r = null;   // 정답판 번호(10-04): 정답만 고쳐도 기기 저장본이 새로 받게
+    var url = BB + name + (name === 'ans.bin' && BI.av ? '?av=' + BI.av : '') + (name[0] === 'w' && BI.tl > 1 ? '?tv=' + BI.tl : ''), c = CS && await CS, r = null;   // 정답판 번호(10-04): 정답만 고쳐도 기기 저장본이 새로 받게
     if (c) try { r = await c.match(url); } catch (e) { r = null; }
     if (!r) {
       r = await fetch(url);
@@ -275,7 +281,7 @@ input[type=radio],input[type=checkbox]{width:19px;height:19px}
     var el = EL[p], small = !!BI.sm && !cache.has(p) && dlMode() !== 'p';   // 원본을 이미 받았으면(또는 원본으로 책 전체를 받아 뒀으면) 원본
     return img(p, small).then(function (u) {
       if (!SHOWN.has(p)) return;
-      el.querySelector('img').src = u; el.dataset.q = small ? 's' : 'f'; el.querySelector('.ph').hidden = true; hot(el, p);
+      el.querySelector('img').src = u; el.dataset.q = small ? 's' : 'f'; el.querySelector('.ph').hidden = true; hot(el, p); tl(el, p);
       if (small && Math.abs(p - cur) <= 1 && needFull()) { UP.add(p); }
     }).catch(function () { SHOWN.delete(p); el.querySelector('.ph').textContent = '이 쪽을 불러오지 못했습니다.'; });
   }
@@ -321,7 +327,7 @@ input[type=radio],input[type=checkbox]{width:19px;height:19px}
     try {
       var src = await img(p);
       if (cur !== p) return;
-      $('im').src = src; $('ph').hidden = true; hot($('pg'), p);
+      $('im').src = src; $('ph').hidden = true; hot($('pg'), p); tl($('pg'), p);
       if (changed) window.scrollTo(0, 0);
     } catch (e) { if (cur === p) $('ph').textContent = '이 쪽을 불러오지 못했습니다.'; }
     [p + 1, p + 2, p - 1].forEach(function (x) { if (x >= 1 && x <= M.n) img(x).catch(function () {}); });
@@ -360,6 +366,7 @@ input[type=radio],input[type=checkbox]{width:19px;height:19px}
       if (dlMode() === m) return toast('이미 받아 두었습니다. 이 기기에서는 인터넷 없이도 열립니다.');
       var names = ['text.bin'].concat(BI.ans ? ['ans.bin'] : []);
       for (var i = 1; i <= M.n; i++) names.push(m + String(i).padStart(4, '0') + '.bin');
+      if (BI.tl) for (var j = 1; j <= M.n; j++) names.push('w' + String(j).padStart(4, '0') + '.bin');   // 글자층(11-10)
       try {
         var est = navigator.storage && navigator.storage.estimate && await navigator.storage.estimate();
         if (est && est.quota && est.quota - est.usage < M.n * per * 1.2e6) return toast('기기 저장 공간이 모자랍니다(약 ' + Math.round(M.n * per) + 'MB 필요).', 6000);
@@ -370,7 +377,7 @@ input[type=radio],input[type=checkbox]{width:19px;height:19px}
       var k = 0, done = 0, fail = 0, full = false;
       async function work() {
         while (k < names.length && !stop && !full) {
-          var nm = names[k++], url = BB + nm + (nm === 'ans.bin' && BI.av ? '?av=' + BI.av : '');
+          var nm = names[k++], url = BB + nm + (nm === 'ans.bin' && BI.av ? '?av=' + BI.av : '') + (nm[0] === 'w' && BI.tl > 1 ? '?tv=' + BI.tl : '');
           try {
             if (!(await c.match(url))) { var r = await fetch(url); if (!r.ok) throw new Error('http'); await c.put(url, r); }
             done++;
@@ -404,6 +411,54 @@ input[type=radio],input[type=checkbox]{width:19px;height:19px}
     var lo = nums.reduce(function (x, y) { return x == null || lt(y, x) ? y : x; }, null);
     return '<b>' + esc(n) + '</b>  <span class="nt">' + (lo && lt(n, lo) ? '보기(예시) 문항 — 답이 책에 적혀 있습니다.' : '예시 문항 — Key에 따로 없습니다(책에 답이 적혀 있음).') + '</span>';
   }
+  // ── 글자층(11-10, textlayer.py): w0001.bin = {r: 그 쪽 비율, l: [[줄 위, 줄 높이, [[x, 폭, 낱말]…]]…]} (쪽 기준 0~1) ──
+  var TLC = new Map(), MCX = null, TLF = '-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,"Apple SD Gothic Neo",sans-serif';
+  function mw(t) { if (!MCX) { MCX = document.createElement('canvas').getContext('2d'); MCX.font = '100px ' + TLF; } return MCX.measureText(t).width / 100 || .5; }
+  function tl(el, p) {
+    if (!BI.tl || !el) return;
+    var old = el.querySelector('.tl');
+    if (old) { if (+old.dataset.p === p) return; old.remove(); }
+    el.dataset.tw = p;
+    var pr = TLC.get(p);
+    if (!pr) { pr = fetchDec('w' + String(p).padStart(4, '0') + '.bin').then(gunzipJson); TLC.set(p, pr); pr.catch(function () { TLC.delete(p); }); if (TLC.size > 40) TLC.delete(TLC.keys().next().value); }
+    pr.then(function (d) {
+      if (+el.dataset.tw !== p || el.querySelector('.tl') || !d.l.length) return;
+      var R = M.ratio, r = d.r || R, W = r <= R ? 1 : R / r, H = r <= R ? r / R : 1;   // 그림은 object-fit:contain — 비율이 다르면 가운데 놓인 자리
+      var box = document.createElement('div'); box.className = 'tl'; box.dataset.p = p;
+      box.style.cssText = 'left:' + (1 - W) * 50 + '%;top:' + (1 - H) * 50 + '%;width:' + W * 100 + '%;height:' + H * 100 + '%';
+      var h = '';
+      d.l.forEach(function (ln) {
+        var fs = ln[1] * r * W * 100;   // cqw(쪽 폭 1%) 단위 글자 크기 = 줄 높이
+        h += '<div>' + ln[2].map(function (w) {
+          var sx = (w[1] * W * 100) / (mw(w[2]) * fs);
+          return '<span style="left:' + w[0] * 100 + '%;top:' + ln[0] * 100 + '%;font-size:' + fs.toFixed(3) + 'cqw;transform:scaleX(' + sx.toFixed(3) + ')">' + esc(w[2]) + ' </span>';
+        }).join('') + '</div>';
+      });
+      box.innerHTML = h; el.appendChild(box);
+    }).catch(function () {});
+  }
+  // 복사(11-10): 낱말 칸이 따로 놓여 그대로 복사하면 한 줄에 한 낱말 → 같은 줄은 띄어쓰기, 줄은 줄바꿈으로
+  document.addEventListener('copy', function (e) {
+    var sel = getSelection(); if (!sel.rangeCount) return;
+    var rg = sel.getRangeAt(0), boxes = [].filter.call(document.querySelectorAll('.tl'), function (b) { return rg.intersectsNode(b); });
+    if (!boxes.length) return;
+    var out = [];
+    boxes.forEach(function (b) {
+      [].forEach.call(b.children, function (ln) {
+        var ws = [];
+        [].forEach.call(ln.children, function (sp) {
+          if (!rg.intersectsNode(sp)) return;
+          var t = sp.textContent, a = 0, z = t.length;
+          if (sp.contains(rg.startContainer)) a = rg.startOffset;
+          if (sp.contains(rg.endContainer)) z = rg.endOffset;
+          t = t.slice(a, z).trim(); if (t) ws.push(t);
+        });
+        if (ws.length) out.push(ws.join(' '));
+      });
+    });
+    if (!out.length) return;
+    e.clipboardData.setData('text/plain', out.join('\n')); e.preventDefault();
+  });
   function hot(el, p) {
     if (!ANS || !el) return;
     el.querySelectorAll('.hz,.ab').forEach(function (x) { x.remove(); });
@@ -1012,11 +1067,15 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
     if (app) {
       const arts = app.querySelectorAll('main > article');
       if (arts.length) add(arts, 'book');
-      else { const pg = app.querySelectorAll('.page'); if (pg.length) add(pg, 'img'); else add([...app.children].filter(x => !x.matches(SKIP)), 'text'); }
+      else { const pg = app.querySelectorAll('.page'); if (pg.length) add(pg, 'img'); else add(kids(app), 'text'); }
     }
-    const root = $('#root'); if (root) add([...root.children].filter(x => !x.matches(SKIP)), 'text');
+    const root = $('#root'); if (root) add(kids(root), 'text');
+    const view = $('#view') || $('#main'); if (view && !app && !root) add(kids(view), 'text');   // 11-10 통합앱·선생님 앱·학습 현황·일정표(목록·현황 화면)에도 필기
+    add(document.querySelectorAll('.gc-month'), 'text');   // 11-10 일정표 달력: 달 블록 하나 = 카드 하나(학생·달로 저장)
     return out;
   }
+  // 뿌리의 자식 가운데 필기 카드가 될 것 — 달력(.gc-month)을 품은 칸은 통째로 붙이지 않고 그 안의 .card만(달력은 달 블록으로 따로)
+  const kids = root => { const out = []; for (const x of root.children) { if (x.nodeType !== 1 || x.matches(SKIP)) continue; if (x.querySelector('.gc-month')) { for (const c of x.querySelectorAll('.card')) if (!c.querySelector('.gc-month') && !c.closest('.gc-wrap')) out.push(c); } else out.push(x); } return out; };
   const vis = el => el.getClientRects().length > 0;
   function norm(el) {   // 카드의 내용 지문(指紋): 그림·음원 파일 이름 + 글자(빈칸에 쓴 답·글상자는 들어가지 않는다)
     let t = ''; el.querySelectorAll('[data-enc],img[src]').forEach(i => { const k = i.dataset.enc || i.getAttribute('src') || ''; if (k && !/^(blob|data):/.test(k)) t += k + '|'; });
@@ -1027,6 +1086,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
   function ident(el, kind) {   // {id, …} — 글 카드는 내용이 그대로면 다시 계산하지 않는다
     if (kind === 'book') return {id: `${SALT}:${PAGE}:${(location.hash.match(/^#g(\d+)/) || [])[1]}:${el.id}:${NARROW.matches ? 'm' : 'w'}`};
     if (kind === 'img') return {id: `${SALT}:${PAGE}:${BOOK}:p${el.dataset.p || new URLSearchParams(location.search).get('p') || 1}`};
+    if (el.classList.contains('gc-month')) return {id: `${SALT}:${PAGE}:cal:${(el.closest('.gc-wrap') || {dataset: {}}).dataset.ink || ''}:${el.id}`};   // 일정표: 학생·달로 고정(내용이 바뀌어도 같은 카드)
     const sig = (el.textContent || '').length + '/' + el.querySelectorAll('[data-enc],img[src]').length, old = sigs.get(el);
     if (old && old.sig === sig) return old;
     // head = 첫머리(「3. 주제」처럼 번호+유형 두 글자, 번호가 없으면 24자), probes = 본문 가운데 두 토막. 채점으로 해설·정오 표시가 덧붙어도 토막은 남는다 → 같은 카드로 본다
