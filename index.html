@@ -558,6 +558,8 @@ var INK = (() => {
   const OURS = '.ink-l,.ink-x,.ink-pad,#inkBar,#inkTop,#inkLive';
   const NARROW = matchMedia('(max-width:640px)'), VV = window.visualViewport || null;
   const zNat = () => (VV && VV.scale > 0 ? VV.scale : 1);   // 브라우저(사파리) 확대 배율
+  const NB = (window.__inkNative && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ink) || null;   // 아이패드 앱(이승수영어 필기) 안: 펜슬 입력·젖은 잉크는 앱이, 획 저장·도구·확대는 이 엔진이 맡는다
+  const post = m => { if (NB) try { NB.postMessage(m); } catch (e) {} };
   const TOOLS = [['pen', '펜'], ['hl', '형광펜'], ['erase', '지우개'], ['lasso', '올가미'], ['text', '글'], ['laser', '레이저']], NAME = Object.fromEntries(TOOLS);
   const css = document.createElement('style');
   css.textContent = `.ink-rel{position:relative}
@@ -612,6 +614,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
   try { penSeen = localStorage.getItem('bnPen') === '1'; dbg = localStorage.getItem('ntDebug') === '1'; Object.assign(S, JSON.parse(localStorage.getItem('inkTool') || '{}')); fold = localStorage.getItem('inkFold') === '1'; } catch (e) {}
   if (S.tool !== 'hl') S.tool = 'pen';   // 색·굵기는 기억하되, 화면을 새로 열면 쓰는 도구(펜·형광펜)로 시작한다(지우개로 시작하면 당황스럽다)
   const keep = () => { try { localStorage.setItem('inkTool', JSON.stringify(S)); } catch (e) {} };
+  if (NB) penSeen = true;   // 앱은 펜슬 기기에서만 쓴다
   const ns = (tag, at) => { const e = document.createElementNS(NSV, tag); for (const k in at) e.setAttribute(k, at[k]); return e; };
   const colOf = st => st.col || (st.h ? OLDHL : OLDCOL)[st.c] || OLDCOL[0], wOf = st => st.w || (st.h ? 16 : 2.2);
 
@@ -875,7 +878,8 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
     }
     ctx.stroke();
   }
-  function kick() { if (!raf) raf = requestAnimationFrame(flushLive); }
+  function kick() { const a = act; if (a && a.nat && !a.own) return; if (!raf) raf = requestAnimationFrame(flushLive); }
+  function own(a) { if (!a.nat || a.own) return; a.own = true; post({t: 'own', id: a.sid}); placeLive(a.rx, a.ry); styleLive(a); a.redraw = true; }   // 직선·도형으로 펴졌다 → 웹 캔버스가 그린다
   function flushLive() {   // 프레임당 한 번: 새로 생긴 토막만 그린다. 화면이 움직였거나(replace) 획이 통째로 바뀌었으면(redraw) 처음부터
     raf = 0; const a = act; if (!a || a.kind !== 'draw' || !lctx) return;
     const P = a.P, n = P.length >> 1;
@@ -893,7 +897,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
      끝에서 떼지 않고 멈추면 직선·네모·동그라미로 편다(형광펜은 거의 곧으면 자동). */
   const fxy = (a, e) => [(e.clientX - a.l) / a.k, (e.clientY - a.tp) / a.k];   // tp = 카드 위쪽 화면 좌표(a.t는 시작 시각)
   function toLine(a, X, Y) {
-    const p = a.st.p, x0 = p[0], y0 = p[1]; let dx = X - x0, dy = Y - y0; const ang = Math.abs(Math.atan2(dy, dx)) * 180 / Math.PI;
+    own(a); const p = a.st.p, x0 = p[0], y0 = p[1]; let dx = X - x0, dy = Y - y0; const ang = Math.abs(Math.atan2(dy, dx)) * 180 / Math.PI;
     if (ang < SNAP || ang > 180 - SNAP) dy = 0; else if (Math.abs(ang - 90) < SNAP) dx = 0;
     a.st.p = [x0, y0, dx, dy]; a.lx = x0 + dx; a.ly = y0 + dy; a.P = [x0 / 2, y0 / 2, a.lx / 2, a.ly / 2]; a.redraw = true; kick();
   }
@@ -905,7 +909,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
   }
   function snap(a) {   // 멈추고 있을 때: 직선 → 네모·동그라미 순으로 맞춰 본다
     const b = straight(a.st.p, 6 / a.u, .06, 40 / a.u); if (b) { a.line = true; toLine(a, b[0], b[1]); dg.s++; return; }
-    const sh = a.st.h ? null : closedShape(a.st.p, a.u); if (sh) { a.st.p = sh.p; if (sh.poly) a.st.poly = 1; a.P = flat(sh.p); a.frozen = true; a.redraw = true; kick(); dg.s++; }
+    const sh = a.st.h ? null : closedShape(a.st.p, a.u); if (sh) { own(a); a.st.p = sh.p; if (sh.poly) a.st.poly = 1; a.P = flat(sh.p); a.frozen = true; a.redraw = true; kick(); dg.s++; }
   }
   function preview(a) {   // 올가미로 묶은 것·글상자를 옮기거나 키우는 동안의 모습
     const c = a.c;
@@ -988,6 +992,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
   }
   document.addEventListener('pointerdown', e => {
     if (e.pointerType !== 'pen' || !host) return;
+    if (NB) { const t = e.target; if (!(t.closest && t.closest(SKIPSEL + ',.ink-tb'))) { e.preventDefault(); e.stopPropagation(); } return; }
     if (act && act.synth && Math.hypot(e.clientX - act.cx, e.clientY - act.cy) < 40) { act.id = e.pointerId; act.synth = false; act.viaTouch = false; act.tid = act.tid; e.preventDefault(); e.stopPropagation(); return; }   // 펜의 touch로 먼저 시작한 획 → 이제부터 pointer로 잇는다
     penDown(e, null);
   }, true);
@@ -1022,7 +1027,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
         else { clearSel(); a.poly = [[x, y]]; a.path = ns('path', {class: 'lasso', d: `M${x} ${y}`}); c.svg.appendChild(a.path); }
       } else if (tool === 'text') { const i = textAt(c, x, y); if (i >= 0) { a.kind = 'tmove'; a.idx = i; a.x0 = x; a.y0 = y; a.mx = a.my = 0; } }   // 글 도구: 글상자를 끌면 옮기고, 누르면 편집
     }
-    if (tt) { a.viaTouch = true; a.tid = tt.identifier; a.synth = true; dg.v++; }
+    if (tt) { a.viaTouch = true; a.tid = tt.identifier; a.synth = !tt.nat; if (tt.nat) { a.nat = true; a.sid = tt.sid; } else dg.v++; }
     act = a; eat = true; if (a.kind === 'draw') kick(); const sl = getSelection(); if (sl && !sl.isCollapsed) sl.removeAllRanges();
     if (!tt) try { (c ? c.el : document.body).setPointerCapture(e.pointerId); } catch (x2) {}
     e.preventDefault(); e.stopPropagation();
@@ -1063,7 +1068,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
   document.addEventListener('touchstart', e => {
     const now = performance.now();
     if (act && act.tid === null) { let best = null, bd = 40; for (const t of e.changedTouches) { const d = t.touchType === 'stylus' ? 0 : Math.hypot(t.clientX - act.cx, t.clientY - act.cy); if (d < bd) { bd = d; best = t; } } if (best) act.tid = best.identifier; }   // 방금 닿은 펜의 touch를 기억
-    if (!act && host && !pin) for (const t of e.changedTouches) if (t.touchType === 'stylus' && t.target && t.target.closest && !t.target.closest('#inkBar')) {   // pointerdown 없이 펜 touch만 왔다 → 그것으로 획을 시작
+    if (!act && host && !pin && !NB) for (const t of e.changedTouches) if (t.touchType === 'stylus' && t.target && t.target.closest && !t.target.closest('#inkBar')) {   // pointerdown 없이 펜 touch만 왔다 → 그것으로 획을 시작
       penDown({target: t.target, clientX: t.clientX, clientY: t.clientY, pointerId: -1, button: 0, buttons: 1, preventDefault() {}, stopPropagation() {}}, t);
       if (act) { if (e.cancelable) e.preventDefault(); e.stopPropagation(); } break;
     }
@@ -1237,7 +1242,43 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
     }
     const o = b.querySelector('.o'); if (o.innerHTML !== h) o.innerHTML = h;
     b.querySelector('[data-a=undo]').disabled = !undo.length; b.querySelector('[data-a=redo]').disabled = !redo.length;
+    natTool();
   }
+  let natT = '', natR = '', nPass = null, natTm = 0;
+  function natTool() {   // 앱에 지금 도구(펜·형광펜이면 색·화면 굵기)를 알린다 — 펜을 대는 순간 앱이 바로 그리도록
+    if (!NB) return; const hl = S.tool === 'hl', m = {t: 'tool', draw: S.tool === 'pen' || hl, col: hl ? HL[S.hl] : PEN[S.pen], w: (hl ? HW[S.size.hl] : PW[S.size.pen]) * Z * zNat(), hl};
+    const k = JSON.stringify(m); if (k !== natT) { natT = k; post(m); }
+  }
+  const PASS = '#inkBar,.ink-tb,#inkToast,input:not([type=radio]):not([type=checkbox]):not([type=button]):not([type=submit]),textarea,select,[contenteditable]:not([contenteditable=false]),audio,video,iframe';
+  function natRects() {   // 펜슬을 웹에 그대로 넘길 자리(도구 막대·입력 칸 등) — 앱은 이 안에서는 필기하지 않는다(글씨 입력·손글씨 입력이 그대로 된다)
+    if (!NB) return; const z = zNat(), vw = DE.clientWidth, vh = DE.clientHeight, r = [];
+    for (const el of document.querySelectorAll(PASS)) { if (r.length >= 800) break; const b = el.getBoundingClientRect(); if (!b.width || !b.height || b.bottom < 0 || b.top > vh || b.right < 0 || b.left > vw) continue; const st = getComputedStyle(el); if (st.visibility === 'hidden' || st.display === 'none') continue; r.push(Math.round(b.left * z), Math.round(b.top * z), Math.round(b.width * z), Math.round(b.height * z)); }
+    const k = r.join(','); if (k !== natR) { natR = k; post({t: 'rects', r}); }
+  }
+  const natDone = id => requestAnimationFrame(() => requestAnimationFrame(() => post({t: 'done', id})));   // 웹이 SVG 획을 화면에 그린 다음에 앱이 젖은 잉크를 지운다(깜빡임 없이)
+  const ext = {   // 앱이 부르는 자리: b = 펜 댐, m = 움직임(점 묶음), e = 뗌. 좌표는 앱 화면 pt(웹뷰 기준)
+    b(x, y, id) {
+      const z = zNat(), cx = x / z, cy = y / z; nPass = null;
+      if (!host) { post({t: 'begin', id, draw: false}); return; }
+      if (pin) pinchEnd(); if (act) endStroke(act.rx, act.ry, true);
+      const t = document.elementFromPoint(cx, cy) || document.body;
+      penDown({target: t, clientX: cx, clientY: cy, pointerId: -2, button: 0, buttons: 1, preventDefault() {}, stopPropagation() {}}, {identifier: -2, nat: true, sid: id});
+      const a = act && act.nat ? act : null; if (!a) nPass = {x: cx, y: cy, lx: cx, ly: cy, d: 0, id};
+      post({t: 'begin', id, draw: !!a && a.kind === 'draw', col: a && a.st ? a.st.col : '', w: a && a.st ? a.st.w * a.u : 0, hl: !!(a && a.st && a.st.h)});
+    },
+    m(arr) {
+      const z = zNat();
+      if (act && act.nat) { for (let i = 0; i + 1 < arr.length; i += 2) addPoint({clientX: arr[i] / z, clientY: arr[i + 1] / z}); return; }
+      if (nPass && arr.length > 1) { const cx = arr[arr.length - 2] / z, cy = arr[arr.length - 1] / z; nPass.d = Math.max(nPass.d, Math.hypot(cx - nPass.x, cy - nPass.y)); if (nPass.d * z > TAP_PX) window.scrollBy(nPass.lx - cx, nPass.ly - cy); nPass.lx = cx; nPass.ly = cy; }   // 필기 자리가 아닌 곳을 펜으로 끌면 화면을 민다
+    },
+    e(x, y, cancel) {
+      const z = zNat(), cx = x / z, cy = y / z;
+      if (act && act.nat) { const id = act.sid; dg.u++; endStroke(cx, cy, !!cancel); natDone(id); }
+      else if (nPass) { const id = nPass.id; if (!cancel && nPass.d * z < TAP_PX) passTap(cx, cy); nPass = null; natDone(id); }
+      natRects();
+    },
+    ready() { if (!NB || !host) return false; natT = natR = ''; natTool(); natRects(); if (!natTm) { natTm = setInterval(natRects, 500); addEventListener('scroll', () => requestAnimationFrame(natRects), {passive: true, capture: true}); addEventListener('resize', natRects); } return true; }
+  };
   function ensureBar() {
     let b = $('#inkBar'); if (b) return b;
     b = document.createElement('div'); b.id = 'inkBar'; b.hidden = true; if (fold) b.className = 'fold';
@@ -1267,7 +1308,7 @@ body.ink-top{border-top:var(--ink-h,0px) solid transparent}
   }
 
   return {
-    ver: 2, init(h) { host = h; }, mount, unmount, setRecord, bar, status,
+    ver: 2, init(h) { host = h; if (NB) setTimeout(() => { ext.ready(); post({t: 'ready'}); }, 0); }, ext, mount, unmount, setRecord, bar, status,
     repaint(c) { paint(c); if (sel && sel.c === c) drawSel(); }, refit(c) { fit(c); paint(c); },
     reset() { if (act) discard(); if (pin) pinchEnd(); closeText(); clearSel(); undo = []; redo = []; last = null; if (Z !== 1) { Z = 1; ZU.forEach(el => zoomEl(el)); afterZoom(); } paintBar(); },
     busy: () => !!act || !!pin, cancel() { if (act) discard(); }, cards: () => all.size,
